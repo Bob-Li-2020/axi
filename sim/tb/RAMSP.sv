@@ -41,7 +41,9 @@ generate
         logic [DW-1:0] q_ff[WS-1:0];
 
         always @(posedge CLK) if (~CEN) q_ff[0] <= mem[A]; else if (QX) q_ff[0] <= {DW{1'bx}};
-        for(j=1;j<=WS-1;j++) begin always_ff @(posedge CLK) q_ff[j] <= q_ff[j-1]; end
+        for(j=1;j<=WS-1;j++) begin: Q_DELAY
+			always_ff @(posedge CLK) q_ff[j] <= q_ff[j-1]; 
+		end: Q_DELAY
         assign Q = q_ff[WS-1];
     end: WS2
 
