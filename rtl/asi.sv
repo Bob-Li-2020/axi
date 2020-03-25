@@ -99,10 +99,10 @@ module asi //import asi_pkg::*;
     input  logic                    usr_reset_n     ,
     //ADDRESS & ENABLE
     output logic [AXI_AW-1     : 0] usr_a           , // address
-    output logic                    usr_ce          , // clock enable. Active-High
+    output logic                    usr_cen         , // clock enable. Active-Low
     //W CHANNEL
     output logic [AXI_DW-1     : 0] usr_d           , // data
-    output logic [AXI_WSTRBW-1 : 0] usr_we          , // write enable. Active-High
+    output logic [AXI_WSTRBW-1 : 0] usr_wen         , // write enable. Active-Low
     //R CHANNEL
     input  logic [AXI_DW-1     : 0] usr_q           , // Q
     //extra signals
@@ -172,10 +172,10 @@ TYPE_ARB st_nxt;
 //------------------------------------
 //ADDRESS & ENABLE
 assign usr_a         = m_addr           ; // address
-assign usr_ce        = m_we | m_re      ; // clock enable
+assign usr_cen       = ~(m_we | m_re)   ; // clock enable
 //W CHANNEL
 assign usr_d         = m_wdata          ; // data
-assign usr_we        = m_wstrb & {AXI_WSTRBW{m_we}}; // write enable
+assign usr_wen       = ~(m_wstrb & {AXI_WSTRBW{m_we}}); // write enable
 //R CHANNEL
 assign m_rdata       = usr_q            ; // Q
 //extra signals
