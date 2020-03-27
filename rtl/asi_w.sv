@@ -51,8 +51,8 @@ module asi_w
     output logic                    BVALID        ,
     input  logic                    BREADY        ,
     //---- USER LOGIC SIGNALS ---------------------
-    input  logic                    usr_clk       ,
-    input  logic                    usr_reset_n   ,
+    input  logic                    RAM_CLK       ,
+    input  logic                    RAM_RESETn    ,
     //AW CHANNEL
     output logic [AXI_IW-1     : 0] m_wid         ,
     output logic [AXI_LW-1     : 0] m_wlen        ,
@@ -229,8 +229,8 @@ assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST
 //------------------------------------
 //------ EASY ASSIGNMENTS ------------
 //------------------------------------
-assign clk              = usr_clk            ;
-assign rst_n            = usr_reset_n        ;
+assign clk              = RAM_CLK            ;
+assign rst_n            = RAM_RESETn        ;
 assign aff_rvalid       = !aff_rempty & !wff_rempty && st_cur==BP_FIRST; // awfifo read may only occur in state <BP_FIRST>
 assign wff_rvalid       = !aff_rempty & !wff_rempty && st_cur==BP_FIRST || !wff_rempty && st_cur==BP_BURST; 
 assign bff_rvalid       = !bff_rempty        ;
@@ -238,9 +238,9 @@ assign bff_rvalid       = !bff_rempty        ;
 //------ AW CHANNEL FIFO ASSIGN ------
 //------------------------------------
 assign aff_wreset_n     = ARESETn            ;
-assign aff_rreset_n     = usr_reset_n        ;
+assign aff_rreset_n     = RAM_RESETn        ;
 assign aff_wclk         = ACLK               ;
-assign aff_rclk         = usr_clk            ;
+assign aff_rclk         = RAM_CLK            ;
 assign aff_we           = AWVALID & AWREADY  ;
 assign aff_re           = aff_rvalid & m_wgranted; 
 assign aff_d            = { AWID, AWADDR, AWLEN, AWSIZE, AWBURST };
@@ -249,9 +249,9 @@ assign { aq_id, aq_addr, aq_len, aq_size, aq_burst } = aff_q;
 //------ W CHANNEL FIFO ASSIGN -------
 //------------------------------------
 assign wff_wreset_n     = ARESETn            ;
-assign wff_rreset_n     = usr_reset_n        ;
+assign wff_rreset_n     = RAM_RESETn        ;
 assign wff_wclk         = ACLK               ;
-assign wff_rclk         = usr_clk            ;
+assign wff_rclk         = RAM_CLK            ;
 assign wff_we           = WVALID & WREADY    ;
 assign wff_re           = wff_rvalid & m_wgranted;
 assign wff_d            = { WDATA, WSTRB, WLAST };
@@ -259,9 +259,9 @@ assign { wq_data, wq_strb, wq_last } = wff_q ;
 //------------------------------------
 //------ B CHANNEL FIFO ASSIGN -------
 //------------------------------------
-assign bff_wreset_n     = usr_reset_n        ;
+assign bff_wreset_n     = RAM_RESETn        ;
 assign bff_rreset_n     = ARESETn            ;
-assign bff_wclk         = usr_clk            ;
+assign bff_wclk         = RAM_CLK            ;
 assign bff_rclk         = ACLK               ;
 assign bff_we           = !bff_wfull && (burst_last || st_cur==BP_BRESP);
 assign bff_re           = bff_rvalid & BREADY;

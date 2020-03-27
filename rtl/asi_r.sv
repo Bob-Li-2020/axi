@@ -47,8 +47,8 @@ module asi_r
     output logic                    RVALID        ,
     input  logic                    RREADY        ,
     //---- USER LOGIC SIGNALS ---------------------
-    input  logic                    usr_clk       ,
-    input  logic                    usr_reset_n   ,
+    input  logic                    RAM_CLK       ,
+    input  logic                    RAM_RESETn    ,
     //AR CHANNEL
     output logic [AXI_IW-1     : 0] m_rid         ,
     output logic [AXI_LW-1     : 0] m_rlen        ,
@@ -193,8 +193,8 @@ generate
         logic [RFF_AW : 0] rff_wcnt_af ; // rff wcnt almost full
         assign m_rvalid    = m_re_ff[SLV_WS-1];
         assign rff_wafull2 = rff_wcnt_af >= RDATA_DEPTH;
-        always_ff @(posedge usr_clk or negedge usr_reset_n)
-            if(!usr_reset_n)
+        always_ff @(posedge RAM_CLK or negedge RAM_RESETn)
+            if(!RAM_RESETn)
                 m_re_ff <= '0;
             else
                 m_re_ff <= {m_re_ff[SLV_WS-1:0], m_re};
@@ -231,16 +231,16 @@ assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST
 //------------------------------------
 //------ EASY ASSIGNMENTS ------------
 //------------------------------------
-assign clk              = usr_clk          ;
-assign rst_n            = usr_reset_n      ;
+assign clk              = RAM_CLK          ;
+assign rst_n            = RAM_RESETn      ;
 assign aff_rvalid       = !aff_rempty && st_cur==BP_FIRST;
 //------------------------------------
 //------ AR CHANNEL FIFO ASSIGN ------
 //------------------------------------
 assign aff_wreset_n     = ARESETn          ;
-assign aff_rreset_n     = usr_reset_n      ;
+assign aff_rreset_n     = RAM_RESETn      ;
 assign aff_wclk         = ACLK             ;
-assign aff_rclk         = usr_clk          ;
+assign aff_rclk         = RAM_CLK          ;
 assign aff_we           = ARVALID & ARREADY;
 assign aff_re           = aff_rvalid & (!rff_wafull2) & m_rgranted;
 assign aff_d            = { ARID, ARADDR, ARLEN, ARSIZE, ARBURST };
@@ -248,9 +248,9 @@ assign { aq_id, aq_addr, aq_len, aq_size, aq_burst } = aff_q;
 //------------------------------------
 //------ R CHANNEL FIFO ASSIGN -------
 //------------------------------------
-assign rff_wreset_n     = usr_reset_n      ;
+assign rff_wreset_n     = RAM_RESETn      ;
 assign rff_rreset_n     = ARESETn          ;
-assign rff_wclk         = usr_clk          ;
+assign rff_wclk         = RAM_CLK          ;
 assign rff_rclk         = ACLK             ;
 assign rff_we           = m_rvalid         ;
 assign rff_re           = RVALID & RREADY  ;
