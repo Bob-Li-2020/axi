@@ -1,86 +1,128 @@
 //-- AUTHOR: LIBING
 //-- DATE: 2020.3
 //-- DESCRIPTION: Used in AXI4 DMA controller. Move data from local RAM to external memory via AXI4. 
-//--              This module works in "usr_clk" domain. To drive AXI bus, a Clock-Domain-Cross module
+//--              This module works in "clk" domain. To drive AXI bus, a Clock-Domain-Cross module
 //--              is still needed to transfer to "ACLK" domain.
 
 module axi_dma_w #(
     AXI_AW = 32,
+    AXI_DW = 128,
     RAM_AW = 20,
-    APB_AW = 12
+    APB_AW = 12,
+    BL     = 16,
+    //--derived parameters
+    L = $clog2(AXI_DW/8),
+    B = L+$clog2(BL)
 )(
-    //---- CONTROL --------------------------
-    input  logic                    apb_clk     ,
-    input  logic                    apb_reset_n ,
+    //---- USER GLOBAL --------------------------
+    input  logic                    clk     ,
+    input  logic                    reset_n ,
+    //---- APB ----------------------------------
+    input  logic                    apb_we      ,
     input  logic [APB_AW-1:0]       apb_a       ,
     input  logic [31:0]             apb_d       ,
     output logic [31:0]             apb_q       ,
-    //---- USER GLOBAL --------------------------
-    input  logic                    usr_clk     ,
-    input  logic                    usr_reset_n ,
     //---- USER AW ------------------------------
-    input  logic [AXI_IW-1     : 0] usr_awid    ,
-    input  logic [AXI_AW-1     : 0] usr_awaddr  ,
-    input  logic [AXI_LW-1     : 0] usr_awlen   ,
-    input  logic [AXI_SW-1     : 0] usr_awsize  ,
-    input  logic [AXI_BURSTW-1 : 0] usr_awburst ,
-    input  logic                    usr_awvalid ,
-    output logic                    usr_awready ,
+    output logic [AXI_IW-1     : 0] axi_awid    ,
+    output logic [AXI_AW-1     : 0] axi_awaddr  ,
+    output logic [AXI_LW-1     : 0] axi_awlen   ,
+    output logic [AXI_SW-1     : 0] axi_awsize  ,
+    output logic [AXI_BURSTW-1 : 0] axi_awburst ,
+    output logic                    axi_awvalid ,
+    input  logic                    axi_awready ,
     //---- USER W  ------------------------------
-    input  logic [AXI_DW-1     : 0] usr_wdata   ,
-    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb   ,
-    input  logic                    usr_wlast   ,
-    input  logic                    usr_wvalid  ,
-    output logic                    usr_wready  ,
+    output logic [AXI_DW-1     : 0] axi_wdata   ,
+    output logic [AXI_WSTRBW-1 : 0] axi_wstrb   ,
+    output logic                    axi_wlast   ,
+    output logic                    axi_wvalid  ,
+    input  logic                    axi_wready  ,
     //---- USER B  ------------------------------
-    output logic [AXI_IW-1     : 0] usr_bid     ,
-    output logic [AXI_BRESPW-1 : 0] usr_bresp   ,
-    output logic                    usr_bvalid  ,
-    input  logic                    usr_bready   
+    input  logic [AXI_IW-1     : 0] axi_bid     ,
+    input  logic [AXI_BRESPW-1 : 0] axi_bresp   ,
+    input  logic                    axi_bvalid  ,
+    output logic                    axi_bready  ,
+    // -- interrupt
+    output logic irq
 );
 
 localparam 
-ADDR_CR         = 0<<2, // DMA enable
-ADDR_SRC_SA_LSB = 1<<2, // Source memory start address
-ADDR_SRC_SA_MSB = 2<<2, // Source memory start address MSB
-ADDR_DST_SA_LSB = 3<<2, // Destination memory start address("awaddr") dpos, dneg
-ADDR_DST_SA_MSB = 4<<2, // Destination memory start address("awaddr") MSB. only used if AXI_AW>32
-ADDR_DMA_LENGTH = 5<<2; // DMA length, word wise
+ADDR_CR         = 0<<2, // CR
+ADDR_SR         = 1<<2, // SR
+ADDR_SRC_SA_LSB = 2<<2, // Source memory start address
+ADDR_SRC_SA_MSB = 3<<2, // Source memory start address MSB
+ADDR_DST_SA_LSB = 4<<2, // Destination memory start address("awaddr") dpos, dneg
+ADDR_DST_SA_MSB = 5<<2, // Destination memory start address("awaddr") MSB. only used if AXI_AW>32
+ADDR_DMA_LENGTH = 6<<2; // DMA length, word wise
 
 typedef enum logic { IDLE=1'b0, BUSY } TYPE_DMA_STATE;
 TYPE_DMA_STATE st_cur;
 TYPE_DMA_STATE st_nxt;
 
-reg [31:0] cr;
-reg [31:0] src_sa_lsb;
-reg [31:0] src_sa_msb;
-reg [31:0] dst_sa_lsb;
-reg [31:0] dst_sa_msb;
-reg [31:0] dma_len;
+reg [63:0] src_sa;
+reg [63:0] dst_sa;
+reg [31:0] dma_length;
 
-wire [RAM_AW-1:0] src_sa = {src_sa_msb, src_sa_lsb};
-wire [AXI_AW-1:0] dst_sa = {dst_sa_msb, dst_sa_lsb};
-wire              dma_en = cr[0];
-
+logic [AXI_AW-1:0] dst_sa_nxt;
+logic [31:0] dma_length_nxt;
 logic dma_done;
+wire dma_done_nxt = dma_done ? ~(apb_we && apb_a==ADDR_SR) : st_cur==BUSY && axi_awready && dma_length_nxt=='0;
 
-always_ff @(posedge apb_clk or negedge apb_reset_n)
-    if(!apb_reset_n) begin
-        cr         <= '0;
-        src_sa_lsb <= '0;
-        src_sa_msb <= '0;
-        dst_sa_lsb <= '0;
-        dst_sa_msb <= '0;
-        dma_len    <= '0;
-    end else if(st_cur==IDLE && apb_we) begin
-        cr         <= apb_a==ADDR_CR         ? apb_d : cr;
-        src_sa_lsb <= apb_a==ADDR_SRC_SA_LSB ? apb_d : src_sa_lsb;
-        src_sa_msb <= apb_a==ADDR_SRC_SA_MSB ? apb_d : src_sa_msb;
-        dst_sa_lsb <= apb_a==ADDR_DST_SA_LSB ? apb_d : dst_sa_lsb;
-        dst_sa_msb <= apb_a==ADDR_DST_SA_MSB ? apb_d : dst_sa_msb;
-        dma_len    <= apb_a==ADDR_DMA_LENGTH ? apb_d : dma_len;
-    end else if(st_cur==BUSY && dma_done) begin
-        cr[0] <= 1'b0;
+//--------- outputs -------------------------
+assign axi_awid = AXI_IW'(1);
+assign axi_awaddr = dst_sa[AXI_AW-1:0];
+assign axi_awsize = AXI_SW'($clog2(AXI_DW/8));
+assign axi_awburst = AXI_BURSTW'(1); // AXI INC MODE
+assign axi_awvalid = st_cur==IDLE && st_cur==BUSY || st_cur==BUSY;
+assign irq = dma_done;
+
+always_ff @(posedge clk or negedge reset_n)
+    if(!reset_n) 
+        dma_done <= 1'b0;
+    else
+        dma_done <= dma_done_nxt;
+
+always_ff @(posedge clk or negedge reset_n)
+    if(!reset_n) 
+        st_cur <= IDLE;
+    else
+        st_cur <= st_nxt;
+
+always_comb 
+    case(st_cur)
+        IDLE   : st_nxt = dma_length>0 ? BUSY : st_cur;
+        BUSY   : st_nxt = dma_done_nxt ? IDLE : st_cur;
+        default: st_nxt = IDLE;
+    endcase
+
+always_ff @(posedge clk or negedge reset_n)
+    if(!reset_n) begin
+        src_sa     <= '0;
+        dst_sa     <= '0;
+        dma_length <= '0;
+    end 
+    else if(st_cur==IDLE && st_nxt==IDLE) begin
+        src_sa[31: 0] <= apb_we && apb_a==ADDR_SRC_SA_LSB ? apb_d : src_sa[31: 0];
+        src_sa[63:32] <= apb_we && apb_a==ADDR_SRC_SA_MSB ? apb_d : src_sa[63:32];
+        dst_sa[31: 0] <= apb_we && apb_a==ADDR_DST_SA_LSB ? apb_d : dst_sa[31: 0];
+        dst_sa[63:32] <= apb_we && apb_a==ADDR_DST_SA_MSB ? apb_d : dst_sa[63:32];
+        dma_length    <= apb_we && apb_a==ADDR_DMA_LENGTH ? apb_d : dma_length;
+    end 
+    else if(st_cur==IDLE && st_nxt==BUSY || st_cur==BUSY) begin
+        dst_sa[AXI_AW-1:0] <= axi_awready ? dst_sa_nxt : dst_sa[AXI_AW-1:0];
+        dma_length <= axi_awready ? dma_length_nxt : dma_length;
     end
+
+always_comb begin
+    if(32'(~dst_sa[L +: $clog2(BL)])+1'b1 <= dma_length) begin
+        axi_awlen = AXI_LW'(~dst_sa[L +: $clog2(BL)]);
+        dst_sa_nxt = {dst_sa[AXI_AW-1:B]+1'b1, B'(0)};
+        dma_length_nxt = dma_length - axi_awlen - 1'b1;
+    end
+    else begin
+        axi_awlen = AXI_LW'(dma_length)-1'b1;
+        dst_sa_nxt = dst_sa[AXI_AW-1:0]+(AXI_LW'(dma_length)<<L);
+        dma_length_nxt = '0;
+    end
+end
 
 endmodule
