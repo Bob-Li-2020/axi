@@ -1,2 +1,4 @@
 quartus_project
 /asi4_hw.tcl
+rtl/dma/*
+sim/
