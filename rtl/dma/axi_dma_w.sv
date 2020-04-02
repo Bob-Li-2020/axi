@@ -7,14 +7,21 @@
 module axi_dma_w #(
     AXI_AW = 32,
     AXI_DW = 128,
+    AXI_IW = 12,
+    AXI_LW = 8,
+    AXI_SW = 8,
+    AXI_BURSTW = 3,
+    AXI_WSTRBW = 16,
+    AXI_BRESPW = 2,
     RAM_AW = 20,
     APB_AW = 12,
     BL     = 16,
+    OD     = 4 // outstanding number
     //--derived parameters
     L = $clog2(AXI_DW/8),
     B = L+$clog2(BL)
 )(
-    //---- USER GLOBAL --------------------------
+    //---- GLOBAL --------------------------
     input  logic                    clk     ,
     input  logic                    reset_n ,
     //---- APB ----------------------------------
@@ -22,7 +29,7 @@ module axi_dma_w #(
     input  logic [APB_AW-1:0]       apb_a       ,
     input  logic [31:0]             apb_d       ,
     output logic [31:0]             apb_q       ,
-    //---- USER AW ------------------------------
+    //---- AXI AW ------------------------------
     output logic [AXI_IW-1     : 0] axi_awid    ,
     output logic [AXI_AW-1     : 0] axi_awaddr  ,
     output logic [AXI_LW-1     : 0] axi_awlen   ,
@@ -30,20 +37,27 @@ module axi_dma_w #(
     output logic [AXI_BURSTW-1 : 0] axi_awburst ,
     output logic                    axi_awvalid ,
     input  logic                    axi_awready ,
-    //---- USER W  ------------------------------
+    //---- AXI W  ------------------------------
     output logic [AXI_DW-1     : 0] axi_wdata   ,
     output logic [AXI_WSTRBW-1 : 0] axi_wstrb   ,
     output logic                    axi_wlast   ,
     output logic                    axi_wvalid  ,
     input  logic                    axi_wready  ,
-    //---- USER B  ------------------------------
+    //---- AXI B -------------------------------
     input  logic [AXI_IW-1     : 0] axi_bid     ,
     input  logic [AXI_BRESPW-1 : 0] axi_bresp   ,
     input  logic                    axi_bvalid  ,
     output logic                    axi_bready  ,
-    // -- interrupt
+    //---- USER W ------------------------------
+    input  logic usr_wvalid,
+    input  logic [AXI_DW-1:0] usr_wdata,
+    input  logic usr_wlast,
+    //--- interrupt
     output logic irq
 );
+
+timeprecision 1ps;
+timeunit 1ns;
 
 localparam 
 ADDR_CR         = 0<<2, // CR
@@ -58,21 +72,28 @@ typedef enum logic { IDLE=1'b0, BUSY } TYPE_DMA_STATE;
 TYPE_DMA_STATE st_cur;
 TYPE_DMA_STATE st_nxt;
 
-reg [63:0] src_sa;
-reg [63:0] dst_sa;
-reg [31:0] dma_length;
+// regs
+logic [63:0] src_sa;
+logic [63:0] dst_sa;
+logic [31:0] dma_length;
 
 logic [AXI_AW-1:0] dst_sa_nxt;
 logic [31:0] dma_length_nxt;
 logic dma_done;
-wire dma_done_nxt = dma_done ? ~(apb_we && apb_a==ADDR_SR) : st_cur==BUSY && axi_awready && dma_length_nxt=='0;
+logic dma_done_nxt; 
+logic [$clog2(BL):0] a; 
+logic a_less_equal_dma_length; 
+
+assign dma_done_nxt = dma_done ? ~(apb_we && apb_a==ADDR_SR) : st_cur==BUSY && axi_awready && dma_length_nxt=='0;
+assign a = {1'b0, ~dst_sa[L +: $clog2(BL)]} + 1'b1;
+assign a_less_equal_dma_length = a <= dma_length;
 
 //--------- outputs -------------------------
 assign axi_awid = AXI_IW'(1);
 assign axi_awaddr = dst_sa[AXI_AW-1:0];
 assign axi_awsize = AXI_SW'($clog2(AXI_DW/8));
 assign axi_awburst = AXI_BURSTW'(1); // AXI INC MODE
-assign axi_awvalid = st_cur==IDLE && st_cur==BUSY || st_cur==BUSY;
+assign axi_awvalid = st_cur==IDLE && st_nxt==BUSY || st_cur==BUSY;
 assign irq = dma_done;
 
 always_ff @(posedge clk or negedge reset_n)
@@ -113,16 +134,37 @@ always_ff @(posedge clk or negedge reset_n)
     end
 
 always_comb begin
-    if(32'(~dst_sa[L +: $clog2(BL)])+1'b1 <= dma_length) begin
-        axi_awlen = AXI_LW'(~dst_sa[L +: $clog2(BL)]);
-        dst_sa_nxt = {dst_sa[AXI_AW-1:B]+1'b1, B'(0)};
+    if(a_less_equal_dma_length) begin
+        axi_awlen = {'0, ~axi_awaddr[L +: $clog2(BL)]};
+        dst_sa_nxt = {axi_awaddr[AXI_AW-1:B]+1'b1, B'(0)};
         dma_length_nxt = dma_length - axi_awlen - 1'b1;
     end
     else begin
-        axi_awlen = AXI_LW'(dma_length)-1'b1;
-        dst_sa_nxt = dst_sa[AXI_AW-1:0]+(AXI_LW'(dma_length)<<L);
+        axi_awlen = AXI_LW'(dma_length-1'b1);
+        dst_sa_nxt = axi_awaddr+(AXI_LW'(dma_length)<<L);
         dma_length_nxt = '0;
     end
 end
+
+sfifo #(
+    .DW(AXI_DW),
+    .FW($clog2(OD)), // FW>0
+    .SHOW_AHEAD(1)
+) aw_buffer (
+    .clk(clk),
+    .rst_n(reset_n),
+    .we(axi_awvalid & axi_awready),
+    .re,
+    .d,
+    .q,
+    .ne,
+    .nf
+);
+
+// debug
+always_ff @(posedge clk)
+    if(axi_awvalid) begin
+        $display("%t: axi_awvalid = %b; axi_awlen = %0d; axi_awaddr = %h", $realtime, axi_awvalid, axi_awlen, axi_awaddr);
+    end
 
 endmodule
