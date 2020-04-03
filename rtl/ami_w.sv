@@ -1,7 +1,10 @@
 //-- AUTHOR: LIBING
 //-- DATE: 2020.3
-//-- DESCRIPTION: AXI MASTER INTERFACE.WRITE. 
-
+//-- DESCRIPTION: AXI MASTER INTERFACE.WRITE. This module includes:
+//--              1. usr_clk/ACLK clock domain cross;
+//--              2. Outstanding addresses control;
+//--              3. WLAST control;
+//--              4. AW/W channel alignment(AW channel precedes W channel).
 
 module ami_w // ami_w: Axi Master Interface Write
 #(
@@ -23,7 +26,7 @@ module ami_w // ami_w: Axi Master Interface Write
     //-------- DERIVED PARAMETERS ----
     AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_BYTESW = $clog2(AXI_BYTES+1)  
 )(
     //---- AXI GLOBAL ---------------------------
     input  logic                    ACLK        ,
@@ -77,14 +80,15 @@ timeprecision 1ps;
 localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW, // aw_buffer DW
            WFF_DW = AXI_DW + AXI_WSTRBW + 1,                        //  w_buffer DW(+1~wlast)
            BFF_DW = AXI_IW + AXI_BRESPW,                            //  b_buffer DW
+           LFF_DW = AXI_LW,
            AFF_AW = $clog2(AMI_AD), // aw_buffer AW
            WFF_AW = $clog2(AMI_WD), //  w_buffer AW
            BFF_AW = $clog2(AMI_BD), //  b_buffer AW
+           LFF_AW = AFF_AW,
            OUT_AW = $clog2(AMI_OD+1); // outstanding bits width
 
-//--- outstanding counters ------------
-logic [OUT_AW-1     : 0] out_cntaw    ; // for AW channel
-logic [OUT_AW-1     : 0] out_cntw     ; // for W  channel
+logic [OUT_AW-1     : 0] ost_cc       ; // outstanding counter
+logic [OUT_AW-1     : 0] ost_cc2      ; // outstanding counter as of "wlast"
 
 //--- aw fifo signals -----------------
 logic                    aff_wreset_n ;
@@ -122,7 +126,7 @@ logic [AXI_DW-1     : 0] wq_data      ;
 logic [AXI_WSTRBW-1 : 0] wq_strb      ;
 logic                    wq_last      ;
 
-//--- bff_q disassemblies -------------
+//---  b fifo signals -----------------
 logic                    bff_wreset_n ;
 logic                    bff_rreset_n ;
 logic                    bff_wclk     ;
@@ -138,17 +142,35 @@ logic [BFF_DW-1     : 0] bff_q        ;
 logic [AXI_IW-1     : 0] bq_bid       ;
 logic [AXI_BRESPW-1 : 0] bq_bresp     ;
 
+//---  awlen fifo signals -------------
+logic                    lff_wreset_n ;
+logic                    lff_rreset_n ;
+logic                    lff_wclk     ;
+logic                    lff_rclk     ;
+logic                    lff_we       ;
+logic                    lff_re       ;
+logic                    lff_wfull    ;
+logic                    lff_wafull   ;
+logic                    lff_rempty   ;
+logic [LFF_AW       : 0] lff_wcnt     ;
+logic [LFF_DW-1     : 0] lff_d        ;
+logic [LFF_DW-1     : 0] lff_q        ;
+logic [LFF_DW-1     : 0] lff_q_latch  ;
+
+logic                    bursting     ;
+logic [AXI_LW-1     : 0] burst_cc     ;
+
 // top ports 
 assign AWID               = aq_id            ; 
 assign AWADDR             = aq_addr          ;
 assign AWLEN              = aq_len           ;
 assign AWSIZE             = aq_size          ;
 assign AWBURST            = aq_burst         ;
-assign AWVALID            = !aff_rempty && out_cntaw<AMI_OD;
+assign AWVALID            = !aff_rempty && ost_cc<AMI_OD;
 assign WDATA              = wq_data          ;
 assign WSTRB              = wq_strb          ;
-assign WLAST              = wq_last          ;
-assign WVALID             = !wff_rempty && out_cntw<AMI_OD;
+assign WLAST              = wff_re && burst_cc==lff_q_latch;
+assign WVALID             = !wff_rempty && ost_cc2>0 && bursting;
 assign BREADY             = !bff_wfull       ;
 assign usr_awready        = !aff_wfull       ;
 assign usr_wready         = !wff_wfull       ;
@@ -185,6 +207,38 @@ assign bff_we             = BVALID & BREADY  ;
 assign bff_re             = usr_bvalid & usr_bready;
 assign bff_d              = {BID, BRESP}     ;
 assign {bq_bid, bq_bresp} = bff_q            ;
+
+// l fifo 
+assign lff_wreset_n       = usr_reset_n      ;
+assign lff_rreset_n       = ARESETn          ;
+assign lff_wclk           = usr_clk          ;
+assign lff_rclk           = ACLK             ;
+assign lff_we             = aff_we           ;
+assign lff_re             = !lff_rempty && (!bursting || WLAST);
+assign lff_d              = usr_awlen        ;
+
+// DMA CONTROL
+always_ff @(posedge ACLK or negedge ARESETn)
+    if(!ARESETn) begin
+        lff_q_latch <= '0; // doesn't really matter
+    end 
+    else if(lff_re) begin
+        lff_q_latch <= lff_q;
+    end
+
+always_ff @(posedge ACLK or negedge ARESETn)
+    if(!ARESETn) begin
+        bursting <= 1'b0;
+        burst_cc <= '0;
+    end
+    else if(!bursting) begin
+        bursting <= lff_re;
+        burst_cc <= '0;
+    end
+    else begin
+        bursting <= ~(WLAST & lff_rempty);
+        burst_cc <= WLAST ? '0 : burst_cc + wff_re;
+    end
 
 //--- fifo instances ---------
 afifo #(
@@ -241,16 +295,34 @@ afifo #(
     .q        ( bff_q        ) 
 );
 
-always_ff @(posedge ACLK or negedge ARESETn)
-    if(!ARESETn)
-        out_cntaw <= '0;
-    else if(aff_re || BVALID & BREADY)
-        out_cntaw <= out_cntaw + aff_re - (BVALID & BREADY);
+afifo #(
+    .AW ( LFF_AW ),
+    .DW ( LFF_DW )
+) len_buffer (
+    .wreset_n ( lff_wreset_n ),
+    .rreset_n ( lff_rreset_n ),
+    .wclk     ( lff_wclk     ),
+    .rclk     ( lff_rclk     ),
+    .we       ( lff_we       ),
+    .re       ( lff_re       ),
+    .wfull    ( lff_wfull    ),
+    .wafull   ( lff_wafull   ), 
+    .rempty   ( lff_rempty   ),
+    .wcnt     ( lff_wcnt     ),
+    .d        ( lff_d        ),
+    .q        ( lff_q        ) 
+);
 
 always_ff @(posedge ACLK or negedge ARESETn)
     if(!ARESETn)
-        out_cntw <= '0;
-    else if(wff_re & wq_last || BVALID & BREADY)
-        out_cntw <= out_cntw + wq_last - (BVALID & BREADY);
+        ost_cc <= '0;
+    else if(aff_re || BVALID & BREADY)
+        ost_cc <= ost_cc + aff_re - (BVALID & BREADY);
+
+always_ff @(posedge ACLK or negedge ARESETn)
+    if(!ARESETn)
+        ost_cc2 <= '0;
+    else if(aff_re || WLAST)
+        ost_cc2 <= ost_cc2 + aff_re - WLAST;
 
 endmodule
