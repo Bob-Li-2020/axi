@@ -7,7 +7,7 @@ module ami_r // ami_r: Axi Master Interface Read
 #(
    //--------- AXI PARAMETERS -------
     AXI_DW     = 128                 , // AXI DATA    BUS WIDTH
-    AXI_AW     = 40                  , // AXI ADDRESS BUS WIDTH
+    AXI_AW     = 32                  , // AXI ADDRESS BUS WIDTH
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH

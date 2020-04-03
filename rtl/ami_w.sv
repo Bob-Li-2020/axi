@@ -2,7 +2,7 @@
 //-- DATE: 2020.3
 //-- DESCRIPTION: AXI MASTER INTERFACE.WRITE. This module includes:
 //--              1. usr_clk/ACLK clock domain cross;
-//--              2. Outstanding addresses control;
+//--              2. Outstanding control;
 //--              3. WLAST control;
 //--              4. AW/W channel alignment(AW channel precedes W channel).
 
@@ -10,7 +10,7 @@ module ami_w // ami_w: Axi Master Interface Write
 #(
    //--------- AXI PARAMETERS -------
     AXI_DW     = 128                 , // AXI DATA    BUS WIDTH
-    AXI_AW     = 40                  , // AXI ADDRESS BUS WIDTH
+    AXI_AW     = 32                  , // AXI ADDRESS BUS WIDTH
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
