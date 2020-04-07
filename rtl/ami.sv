@@ -90,18 +90,25 @@ module ami //ami: Axi Master Interface
     input  logic                    cfg_dmaw_valid ,
     output logic                    cfg_dmaw_ready ,
     input  logic [31           : 0] cfg_dmaw_sa    , // dma write start address   
-    input  logic [31           : 0] cfg_dmaw_len   , // dma write length in bytes
+    input  logic [31           : 0] cfg_dmaw_len   , // dma write length
     //---- CONFIG DMA READ -------------------------
     input  logic                    cfg_dmar_valid ,
     output logic                    cfg_dmar_ready ,
     input  logic [31           : 0] cfg_dmar_sa    , // dma read start address   
-    input  logic [31           : 0] cfg_dmar_len   , // dma read length in bytes
+    input  logic [31           : 0] cfg_dmar_len   , // dma read length
     //---- USER W  ---------------------------------
     input  logic [AXI_DW-1     : 0] usr_wdata      ,
     input  logic [AXI_WSTRBW-1 : 0] usr_wstrb      ,
     input  logic                    usr_wlast      ,
     input  logic                    usr_wvalid     ,
-    output logic                    usr_wready      
+    output logic                    usr_wready     ,
+    //---- USER R  ---------------------------------
+    output logic [AXI_IW-1     : 0] usr_rid        ,
+    output logic [AXI_DW-1     : 0] usr_rdata      ,
+    output logic [AXI_RRESPW-1 : 0] usr_rresp      ,
+    output logic                    usr_rlast      ,
+    output logic                    usr_rvalid     ,
+    input  logic                    usr_rready      
 );
 
 timeunit 1ns;
@@ -128,18 +135,47 @@ logic [AXI_SW-1     : 0] usr_arsize  ;
 logic [AXI_BURSTW-1 : 0] usr_arburst ;
 logic                    usr_arvalid ;
 logic                    usr_arready ;
-//---- USER R  -----------------------
-logic [AXI_IW-1     : 0] usr_rid     ;
-logic [AXI_DW-1     : 0] usr_rdata   ;
-logic [AXI_RRESPW-1 : 0] usr_rresp   ;
-logic                    usr_rlast   ;
-logic                    usr_rvalid  ;
-logic                    usr_rready  ;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
 
-wlen_partition #(
+axlen_partition #(
+    //--------- AXI PARAMETERS -------
+    .AXI_DW     ( AXI_DW     ),
+    .AXI_AW     ( AXI_AW     ),
+    .AXI_IW     ( AXI_IW     ),
+    .AXI_LW     ( AXI_LW     ),
+    .AXI_SW     ( AXI_SW     ),
+    .AXI_BURSTW ( AXI_BURSTW ),
+    .AXI_BRESPW ( AXI_BRESPW ),
+    .AXI_RRESPW ( AXI_RRESPW ),
+    //--------- AMI CONFIGURE --------
+    .AMI_OD     ( AMI_OD     ),
+    .AMI_AD     ( AMI_AD     ),
+    .AMI_RD     ( AMI_RD     ),
+    .AMI_WD     ( AMI_WD     ),
+    .AMI_BD     ( AMI_BD     ),
+    //-------- DERIVED PARAMETERS ----
+    .AXI_BYTES  ( AXI_BYTES  ),
+    .AXI_WSTRBW ( AXI_WSTRBW ),
+    .AXI_BYTESW ( AXI_BYTESW )
+) arlen_partition (
+    .clk            ( usr_clk        ),
+    .reset_n        ( usr_reset_n    ),
+    .cfg_dmaw_valid ( cfg_dmar_valid ),
+    .cfg_dmaw_ready ( cfg_dmar_ready ),
+    .cfg_dmaw_sa    ( cfg_dmar_sa    ),
+    .cfg_dmaw_len   ( cfg_dmar_len   ),
+    .awid           ( usr_arid       ),
+    .awaddr         ( usr_araddr     ),
+    .awlen          ( usr_arlen      ),
+    .awsize         ( usr_arsize     ),
+    .awburst        ( usr_arburst    ),
+    .awvalid        ( usr_arvalid    ),
+    .awready        ( usr_arready    ) 
+);
+
+axlen_partition #(
     //--------- AXI PARAMETERS -------
     .AXI_DW     ( AXI_DW     ),
     .AXI_AW     ( AXI_AW     ),

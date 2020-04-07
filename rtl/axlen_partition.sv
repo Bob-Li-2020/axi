@@ -1,6 +1,6 @@
 //-- AUTHOR: LIBING
 //-- DATE: 2020.3
-//-- Description: AXI burst length(write/read) partition
+//-- Description: AXI burst length(write/read) partition, so that "axaddr" and "axlen" are burst length aligned.
 
 
 module axlen_partition 
@@ -32,7 +32,7 @@ module axlen_partition
     output logic                    cfg_dma_ready ,
     input  logic [31           : 0] cfg_dma_sa    , // dma start address(bytes)   
     input  logic [31           : 0] cfg_dma_len   , // dma length(bytes) 
-    //---- AXI AW CHANNEL -------------------------
+    //---- AXI AW/AR CHANNEL ----------------------
     output logic [AXI_IW-1     : 0] axid          ,
     output logic [AXI_AW-1     : 0] axaddr        ,
     output logic [AXI_LW-1     : 0] axlen         ,

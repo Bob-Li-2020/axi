@@ -69,47 +69,47 @@ timeprecision 1ps;
 localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW, // ar_buffer DW
            RFF_DW = AXI_IW + AXI_DW + AXI_RRESPW + 1, //  r_buffer DW(+1~wlast)
            AFF_AW = $clog2(AMI_AD), // ar_buffer AW
-           RFF_AW = $clog2(AMI_WD); //  r_buffer AW
+           RFF_AW = $clog2(AMI_WD), //  r_buffer AW
+           OUT_AW = $clog2(AMI_OD+1); // outstanding bits width
 
-//--- outstanding counters ------------------
-logic [$clog2(AMI_OD+1)-1 : 0] out_cnt      ;
+logic [OUT_AW-1     : 0] ost_cc       ; // outstanding counter
 
-//--- ar fifo signals -----------------------
-logic                          aff_wreset_n ;
-logic                          aff_rreset_n ;
-logic                          aff_wclk     ;
-logic                          aff_rclk     ;
-logic                          aff_we       ;
-logic                          aff_re       ;
-logic                          aff_wfull    ;
-logic                          aff_wafull   ;
-logic                          aff_rempty   ;
-logic [AFF_AW             : 0] aff_wcnt     ;
-logic [AFF_DW-1           : 0] aff_d        ;
-logic [AFF_DW-1           : 0] aff_q        ;
-logic [AXI_IW-1           : 0] aq_id        ;
-logic [AXI_AW-1           : 0] aq_addr      ;
-logic [AXI_LW-1           : 0] aq_len       ;
-logic [AXI_SW-1           : 0] aq_size      ;
-logic [AXI_BURSTW-1       : 0] aq_burst     ;
+//--- ar fifo signals -----------------
+logic                    aff_wreset_n ;
+logic                    aff_rreset_n ;
+logic                    aff_wclk     ;
+logic                    aff_rclk     ;
+logic                    aff_we       ;
+logic                    aff_re       ;
+logic                    aff_wfull    ;
+logic                    aff_wafull   ;
+logic                    aff_rempty   ;
+logic [AFF_AW       : 0] aff_wcnt     ;
+logic [AFF_DW-1     : 0] aff_d        ;
+logic [AFF_DW-1     : 0] aff_q        ;
+logic [AXI_IW-1     : 0] aq_id        ;
+logic [AXI_AW-1     : 0] aq_addr      ;
+logic [AXI_LW-1     : 0] aq_len       ;
+logic [AXI_SW-1     : 0] aq_size      ;
+logic [AXI_BURSTW-1 : 0] aq_burst     ;
 
-//---  r fifo signals -----------------------
-logic                          rff_wreset_n ;
-logic                          rff_rreset_n ;
-logic                          rff_wclk     ;
-logic                          rff_rclk     ;
-logic                          rff_we       ;
-logic                          rff_re       ;
-logic                          rff_wfull    ;
-logic                          rff_wafull   ;
-logic                          rff_rempty   ;
-logic [RFF_AW             : 0] rff_wcnt     ;
-logic [RFF_DW-1           : 0] rff_d        ;
-logic [RFF_DW-1           : 0] rff_q        ;
-logic [AXI_IW-1           : 0] rq_id        ;
-logic [AXI_DW-1           : 0] rq_data      ;
-logic [AXI_RRESPW-1       : 0] rq_resp      ;
-logic                          rq_last      ;
+//---  r fifo signals -----------------
+logic                    rff_wreset_n ;
+logic                    rff_rreset_n ;
+logic                    rff_wclk     ;
+logic                    rff_rclk     ;
+logic                    rff_we       ;
+logic                    rff_re       ;
+logic                    rff_wfull    ;
+logic                    rff_wafull   ;
+logic                    rff_rempty   ;
+logic [RFF_AW       : 0] rff_wcnt     ;
+logic [RFF_DW-1     : 0] rff_d        ;
+logic [RFF_DW-1     : 0] rff_q        ;
+logic [AXI_IW-1     : 0] rq_id        ;
+logic [AXI_DW-1     : 0] rq_data      ;
+logic [AXI_RRESPW-1 : 0] rq_resp      ;
+logic                    rq_last      ;
 
 // top ports
 assign ARID         = aq_id            ;
@@ -117,7 +117,7 @@ assign ARADDR       = aq_addr          ;
 assign ARLEN        = aq_len           ;
 assign ARSIZE       = aq_size          ;
 assign ARBURST      = aq_burst         ;
-assign ARVALID      = !aff_rempty && out_cnt<AMI_OD;
+assign ARVALID      = !aff_rempty && ost_cc<AMI_OD;
 assign RREADY       = !rff_wfull       ;
 assign usr_arready  = !aff_wfull       ;
 assign usr_rid      = rq_id            ;
@@ -185,8 +185,8 @@ afifo #(
 
 always_ff @(posedge ACLK or negedge ARESETn)
     if(!ARESETn)
-        out_cnt <= '0;
+        ost_cc <= '0;
     else if(aff_re || RLAST & RREADY)
-        out_cnt <= out_cnt + aff_re - (RLAST & RREADY);
+        ost_cc <= ost_cc+aff_re-(RLAST & RREADY);
 
 endmodule
