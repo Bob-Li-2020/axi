@@ -20,21 +20,21 @@ module wlen_partition
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
     AXI_BYTESW = $clog2(AXI_BYTES+1)   
 )(
-    input  logic                    clk        ,
-    input  logic                    reset_n    ,
-    //---- CONFIG ------------------------
+    input  logic                    clk            ,
+    input  logic                    reset_n        ,
+    //---- CONFIG ----------------------------------
     input  logic                    cfg_dmaw_valid ,
     output logic                    cfg_dmaw_ready ,
     input  logic [31           : 0] cfg_dmaw_sa    , // dma write start address   
     input  logic [31           : 0] cfg_dmaw_len   , // dma write length 
-    //---- AXI AW CHANNEL ---------------------------
-    output logic [AXI_IW-1     : 0] awid       ,
-    output logic [AXI_AW-1     : 0] awaddr     ,
-    output logic [AXI_LW-1     : 0] awlen      ,
-    output logic [AXI_SW-1     : 0] awsize     ,
-    output logic [AXI_BURSTW-1 : 0] awburst    ,
-    output logic                    awvalid    ,
-    input  logic                    awready     
+    //---- AXI AW CHANNEL --------------------------
+    output logic [AXI_IW-1     : 0] awid           ,
+    output logic [AXI_AW-1     : 0] awaddr         ,
+    output logic [AXI_LW-1     : 0] awlen          ,
+    output logic [AXI_SW-1     : 0] awsize         ,
+    output logic [AXI_BURSTW-1 : 0] awburst        ,
+    output logic                    awvalid        ,
+    input  logic                    awready         
 );
 
 timeunit 1ns;
@@ -47,32 +47,27 @@ B = $clog2(BL)+L;
 
 enum logic { IDLE=1'b0, BUSY } st_cur, st_nxt;
 
-//---- CONFIG REGISTERS -------
-logic [31 : L] dmaw_sa        ;
-logic [31 : L] dmaw_len       ;
-logic dmaw_sa_we;
-logic dmaw_len_we;
+//---- CONFIG REGISTERS ----
+logic [31 : L] dmaw_sa     ;
+logic [31 : L] dmaw_len    ;
+logic          dmaw_sa_we  ;
+logic          dmaw_len_we ;
 
-assign dmaw_sa_we = st_cur==IDLE && st_nxt==BUSY;
+assign dmaw_sa_we  = st_cur==IDLE && st_nxt==BUSY;
 assign dmaw_len_we = st_cur==IDLE && st_nxt==BUSY;
 
-//---- useful variables ------//
-logic [AXI_LW-1:0] awlen_prompt;
-logic [31:L] dmaw_sa_nxt;
-logic [31:L] dmaw_len_nxt;
-logic dmaw_sa_last;
+logic [AXI_LW-1 : 0] awlen_prompt ;
+logic                dmaw_sa_last ;
 
-assign cfg_dmaw_ready = st_cur==IDLE;
+assign cfg_dmaw_ready = st_cur==IDLE       ;
+assign awid           = AXI_IW'(1)         ;
+assign awaddr         = {dmaw_sa[AXI_AW-1:L], L'(0)};
+assign awlen          = min2_len(awlen_prompt, dmaw_len);
+assign awsize         = AXI_SW'($clog2(AXI_BYTES));
+assign awburst        = AXI_BURSTW'(1)     ;
+assign awvalid        = st_cur==BUSY       ;
 assign awlen_prompt   = {'0, ~dmaw_sa[B-1:L]};
-assign dmaw_sa_nxt    = dmaw_sa+awlen+1'b1;
-assign dmaw_len_nxt   = dmaw_len-awlen-1'b1;
-assign dmaw_sa_last   = awvalid & awready && dmaw_len_nxt=='0;
-assign awid      = AXI_IW'(1);
-assign awaddr    = {dmaw_sa[AXI_AW-1:L], L'(0)};
-assign awlen     = min2_len(awlen_prompt, dmaw_len);
-assign awsize    = AXI_SW'($clog2(AXI_BYTES));
-assign awburst   = AXI_BURSTW'(1);
-assign awvalid   = st_cur==BUSY;
+assign dmaw_sa_last   = awvalid & awready && dmaw_len-awlen-1'b1=='0;
 
 always_ff @(posedge clk or negedge reset_n)
     if(!reset_n) begin
@@ -96,8 +91,8 @@ always_ff @(posedge clk or negedge reset_n)
     else if(st_cur==IDLE && dmaw_sa_we) begin
         dmaw_sa <= cfg_dmaw_sa[31:L];
     end
-    else if(st_cur==BUSY) begin
-        dmaw_sa <= awvalid & awready ? dmaw_sa_nxt;
+    else if(st_cur==BUSY && awvalid & awready) begin
+        dmaw_sa <= dmaw_sa+awlen+1'b1;
     end
 
 always_ff @(posedge clk or negedge reset_n)
@@ -107,11 +102,11 @@ always_ff @(posedge clk or negedge reset_n)
     else if(st_cur==IDLE && dmaw_len_we) begin
         dmaw_len <= cfg_dmaw_len[31:L];
     end
-    else if(st_cur==BUSY) begin
-        dmaw_len <= awvalid & awready ? dmaw_len_nxt;
+    else if(st_cur==BUSY && awvalid & awready) begin
+        dmaw_len <= dmaw_len-awlen-1'b1;
     end
 
-function logic [AXI_LW-1:0] min2_len(input logic [AXI_LW-1:0] awlen, input logic [31:L] dmaw_len)
+function logic [AXI_LW-1:0] min2_len(input logic [AXI_LW-1:0] awlen, input logic [31:L] dmaw_len);
     return awlen < dmaw_len-1'b1 ? awlen : AXI_LW'(dmaw_len-1'b1);
 endfunction: min2_len
 
