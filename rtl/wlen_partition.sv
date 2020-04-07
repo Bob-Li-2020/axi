@@ -20,39 +20,21 @@ module wlen_partition
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
     AXI_BYTESW = $clog2(AXI_BYTES+1)   
 )(
-    //---- USER GLOBAL -----------------------------
-    input  logic                    usr_clk        ,
-    input  logic                    usr_reset_n    ,
-    //---- CONFIG DMA WRITE ------------------------
+    input  logic                    clk        ,
+    input  logic                    reset_n    ,
+    //---- CONFIG ------------------------
     input  logic                    cfg_dmaw_valid ,
     output logic                    cfg_dmaw_ready ,
     input  logic [31           : 0] cfg_dmaw_sa    , // dma write start address   
-    input  logic [31           : 0] cfg_dmaw_len   , // dma write length in bytes
-    //---- USER AW ---------------------------------
-    output logic [AXI_IW-1     : 0] usr_awid       ,
-    output logic [AXI_AW-1     : 0] usr_awaddr     ,
-    output logic [AXI_LW-1     : 0] usr_awlen      ,
-    output logic [AXI_SW-1     : 0] usr_awsize     ,
-    output logic [AXI_BURSTW-1 : 0] usr_awburst    ,
-    output logic                    usr_awvalid    ,
-    input  logic                    usr_awready    ,
-    //---- USER W  ---------------------------------
-    output logic [AXI_DW-1     : 0] usr_wdata      ,
-    output logic [AXI_WSTRBW-1 : 0] usr_wstrb      ,
-    output logic                    usr_wlast      ,
-    output logic                    usr_wvalid     ,
-    input  logic                    usr_wready     ,
-    //---- USER B  ---------------------------------
-    output logic [AXI_IW-1     : 0] usr_bid        ,
-    output logic [AXI_BRESPW-1 : 0] usr_bresp      ,
-    output logic                    usr_bvalid     ,
-    input  logic                    usr_bready     ,
-    //---- DMA WRITE DATA --------------------------
-    input  logic [AXI_DW-1     : 0] dmaw_data      ,
-    input  logic [AXI_WSTRBW-1 : 0] dmaw_strb      ,
-    input  logic                    dmaw_last      ,
-    input  logic                    dmaw_valid     ,
-    output logic                    dmaw_ready      
+    input  logic [31           : 0] cfg_dmaw_len   , // dma write length 
+    //---- AXI AW CHANNEL ---------------------------
+    output logic [AXI_IW-1     : 0] awid       ,
+    output logic [AXI_AW-1     : 0] awaddr     ,
+    output logic [AXI_LW-1     : 0] awlen      ,
+    output logic [AXI_SW-1     : 0] awsize     ,
+    output logic [AXI_BURSTW-1 : 0] awburst    ,
+    output logic                    awvalid    ,
+    input  logic                    awready     
 );
 
 timeunit 1ns;
@@ -63,58 +45,38 @@ BL = 16, // default burst length
 L = $clog2(AXI_BYTES),
 B = $clog2(BL)+L;
 
-enum logic [1:0] { CFG_IDLE=2'b00, CFG_BUSY, CFG_EXIT } st_cur, st_nxt;
+enum logic { IDLE=1'b0, BUSY } st_cur, st_nxt;
 
 //---- CONFIG REGISTERS -------
 logic [31 : L] dmaw_sa        ;
 logic [31 : L] dmaw_len       ;
-logic [31 : L] dmaw_data_len  ; // static version of "dmaw_len"
-logic          dmaw_data_last ;
-logic [31 : L] dmaw_data_cc   ;
+logic dmaw_sa_we;
+logic dmaw_len_we;
 
-//---- OUTPUTS ----------------
-//---- CONFIG DMA WRITE ------------------------
+assign dmaw_sa_we = st_cur==IDLE && st_nxt==BUSY;
+assign dmaw_len_we = st_cur==IDLE && st_nxt==BUSY;
 
-output logic                    cfg_dmaw_ready = st_cur==CFG_IDLE;
+//---- useful variables ------//
+logic [AXI_LW-1:0] awlen_prompt;
+logic [31:L] dmaw_sa_nxt;
+logic [31:L] dmaw_len_nxt;
+logic dmaw_sa_last;
 
+assign cfg_dmaw_ready = st_cur==IDLE;
+assign awlen_prompt   = {'0, ~dmaw_sa[B-1:L]};
+assign dmaw_sa_nxt    = dmaw_sa+awlen+1'b1;
+assign dmaw_len_nxt   = dmaw_len-awlen-1'b1;
+assign dmaw_sa_last   = awvalid & awready && dmaw_len_nxt=='0;
+assign awid      = AXI_IW'(1);
+assign awaddr    = {dmaw_sa[AXI_AW-1:L], L'(0)};
+assign awlen     = min2_len(awlen_prompt, dmaw_len);
+assign awsize    = AXI_SW'($clog2(AXI_BYTES));
+assign awburst   = AXI_BURSTW'(1);
+assign awvalid   = st_cur==BUSY;
 
-//---- USER AW ---------------------------------
-output logic [AXI_IW-1     : 0] usr_awid       = AXI_IW'(1);
-output logic [AXI_AW-1     : 0] usr_awaddr     ,
-output logic [AXI_LW-1     : 0] usr_awlen      ,
-output logic [AXI_SW-1     : 0] usr_awsize     = AXI_SW'($clog2(AXI_BYTES));
-output logic [AXI_BURSTW-1 : 0] usr_awburst    = AXI_BURSTW'(1);
-output logic                    usr_awvalid    ,
-
-//---- USER W  ---------------------------------
-output logic [AXI_DW-1     : 0] usr_wdata      = dmaw_data;
-output logic [AXI_WSTRBW-1 : 0] usr_wstrb      = dmaw_strb;
-output logic                    usr_wlast      = ,
-output logic                    usr_wvalid     ,
-
-//---- USER B  ---------------------------------
-output logic [AXI_IW-1     : 0] usr_bid        ,
-output logic [AXI_BRESPW-1 : 0] usr_bresp      ,
-output logic                    usr_bvalid     ,
-
-//---- DMA WRITE DATA --------------------------
-
-
-
-
-output logic                    dmaw_ready      
-
-
-assign {usr_awid, usr_awsize, usr_awburst} = {AXI_IW'(1), AXI_SW'($clog2(AXI_BYTES)), AXI_BURSTW'(1)};
-assign usr_awvalid    = ~cfg_dmaw_ready && dmaw_len>0;
-assign usr_awaddr     = {dmaw_sa[AXI_AW-1:L], '0};
-assign usr_awlen      = 
-assign dmaw_ready     = ~cfg_dmaw_ready & usr_wready;
-assign dmaw_data_last = dmaw_valid & dmaw_ready && dmaw_data_cc+1'b1==dmaw_data_len;
-
-always_ff @(posedge usr_clk or negedge usr_reset_n)
-    if(!usr_reset_n) begin
-        st_cur <= CFG_IDLE;
+always_ff @(posedge clk or negedge reset_n)
+    if(!reset_n) begin
+        st_cur <= IDLE;
     end
     else begin
         st_cur <= st_nxt;
@@ -122,30 +84,36 @@ always_ff @(posedge usr_clk or negedge usr_reset_n)
 
 always_comb 
     case(st_cur)
-        CFG_IDLE: cfg_dmaw_ready & cfg_dmaw_valid && cfg_dmaw_len>0 ? CFG_BUSY : st_cur;
-        CFG_BUSY: //TODO
+        IDLE: st_nxt = cfg_dmaw_ready & cfg_dmaw_valid && cfg_dmaw_len>0 ? BUSY : st_cur;
+        BUSY: st_nxt = dmaw_sa_last ? IDLE : st_cur;
+        default:  st_nxt = IDLE;
     endcase
 
-always_ff @(posedge usr_clk or negedge usr_reset_n)
-    if(!usr_reset_n) begin
+always_ff @(posedge clk or negedge reset_n)
+    if(!reset_n) begin
         dmaw_sa <= '0;
-        dmaw_len <= '0;
-        dmaw_data_len <= '0;
     end 
-    else if(st_cur==CFG_IDLE && st_nxt==CFG_BUSY) begin
+    else if(st_cur==IDLE && dmaw_sa_we) begin
         dmaw_sa <= cfg_dmaw_sa[31:L];
-        dmaw_len <= cfg_dmaw_len[31:L]; 
-        dmaw_data_len <= cfg_dmaw_len[31:L]; 
+    end
+    else if(st_cur==BUSY) begin
+        dmaw_sa <= awvalid & awready ? dmaw_sa_nxt;
     end
 
-always_ff @(posedge usr_clk or negedge usr_reset_n)
-    if(!usr_reset_n) begin
-        dmaw_data_cc <= '0;
+always_ff @(posedge clk or negedge reset_n)
+    if(!reset_n) begin
+        dmaw_len <= '0;
+    end 
+    else if(st_cur==IDLE && dmaw_len_we) begin
+        dmaw_len <= cfg_dmaw_len[31:L];
     end
-    else if(dmaw_valid & dmaw_ready) begin
-        dmaw_data_cc <= dmaw_data_last ? '0 : dmaw_data_cc+1'b1;
+    else if(st_cur==BUSY) begin
+        dmaw_len <= awvalid & awready ? dmaw_len_nxt;
     end
 
+function logic [AXI_LW-1:0] min2_len(input logic [AXI_LW-1:0] awlen, input logic [31:L] dmaw_len)
+    return awlen < dmaw_len-1'b1 ? awlen : AXI_LW'(dmaw_len-1'b1);
+endfunction: min2_len
 
 endmodule
 

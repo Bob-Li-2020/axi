@@ -317,12 +317,12 @@ always_ff @(posedge ACLK or negedge ARESETn)
     if(!ARESETn)
         ost_cc <= '0;
     else if(aff_re || BVALID & BREADY)
-        ost_cc <= ost_cc + aff_re - (BVALID & BREADY);
+        ost_cc <= ost_cc+aff_re-(BVALID & BREADY);
 
 always_ff @(posedge ACLK or negedge ARESETn)
     if(!ARESETn)
         ost_cc2 <= '0;
     else if(aff_re || WLAST)
-        ost_cc2 <= ost_cc2 + aff_re - WLAST;
+        ost_cc2 <= ost_cc2+aff_re-WLAST;
 
 endmodule
