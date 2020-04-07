@@ -34,7 +34,10 @@ module ami //ami: Axi Master Interface
     //-------- DERIVED PARAMETERS ----
     AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_BYTESW = $clog2(AXI_BYTES+1) ,
+    BL         = 16                  , // default burst length
+    L          = $clog2(AXI_BYTES)   ,
+    B          = $clog2(BL)+L 
 )(
     //---- AXI GLOBAL ------------------------------
     input  logic                    ACLK           ,
@@ -158,21 +161,26 @@ axlen_partition #(
     //-------- DERIVED PARAMETERS ----
     .AXI_BYTES  ( AXI_BYTES  ),
     .AXI_WSTRBW ( AXI_WSTRBW ),
-    .AXI_BYTESW ( AXI_BYTESW )
+    .AXI_BYTESW ( AXI_BYTESW ),
+    .BL         ( BL         ),
+    .L          ( L          ),
+    .B          ( B          )
 ) arlen_partition (
-    .clk            ( usr_clk        ),
-    .reset_n        ( usr_reset_n    ),
-    .cfg_dmaw_valid ( cfg_dmar_valid ),
-    .cfg_dmaw_ready ( cfg_dmar_ready ),
-    .cfg_dmaw_sa    ( cfg_dmar_sa    ),
-    .cfg_dmaw_len   ( cfg_dmar_len   ),
-    .awid           ( usr_arid       ),
-    .awaddr         ( usr_araddr     ),
-    .awlen          ( usr_arlen      ),
-    .awsize         ( usr_arsize     ),
-    .awburst        ( usr_arburst    ),
-    .awvalid        ( usr_arvalid    ),
-    .awready        ( usr_arready    ) 
+    .clk           ( usr_clk        ),
+    .reset_n       ( usr_reset_n    ),
+
+    .cfg_dma_valid ( cfg_dmar_valid ),
+    .cfg_dma_ready ( cfg_dmar_ready ),
+    .cfg_dma_sa    ( cfg_dmar_sa    ),
+    .cfg_dma_len   ( cfg_dmar_len   ),
+
+    .axid          ( usr_arid       ),
+    .axaddr        ( usr_araddr     ),
+    .axlen         ( usr_arlen      ),
+    .axsize        ( usr_arsize     ),
+    .axburst       ( usr_arburst    ),
+    .axvalid       ( usr_arvalid    ),
+    .axready       ( usr_arready    ) 
 );
 
 axlen_partition #(
@@ -194,67 +202,78 @@ axlen_partition #(
     //-------- DERIVED PARAMETERS ----
     .AXI_BYTES  ( AXI_BYTES  ),
     .AXI_WSTRBW ( AXI_WSTRBW ),
-    .AXI_BYTESW ( AXI_BYTESW )
+    .AXI_BYTESW ( AXI_BYTESW ),
+    .BL         ( BL         ),
+    .L          ( L          ),
+    .B          ( B          )
 ) awlen_partition (
-    .clk            ( usr_clk        ),
-    .reset_n        ( usr_reset_n    ),
-    .cfg_dmaw_valid ( cfg_dmaw_valid ),
-    .cfg_dmaw_ready ( cfg_dmaw_ready ),
-    .cfg_dmaw_sa    ( cfg_dmaw_sa    ),
-    .cfg_dmaw_len   ( cfg_dmaw_len   ),
-    .awid           ( usr_awid       ),
-    .awaddr         ( usr_awaddr     ),
-    .awlen          ( usr_awlen      ),
-    .awsize         ( usr_awsize     ),
-    .awburst        ( usr_awburst    ),
-    .awvalid        ( usr_awvalid    ),
-    .awready        ( usr_awready    ) 
+    .clk           ( usr_clk        ),
+    .reset_n       ( usr_reset_n    ),
+
+    .cfg_dma_valid ( cfg_dmaw_valid ),
+    .cfg_dma_ready ( cfg_dmaw_ready ),
+    .cfg_dma_sa    ( cfg_dmaw_sa    ),
+    .cfg_dma_len   ( cfg_dmaw_len   ),
+
+    .axid          ( usr_awid       ),
+    .axaddr        ( usr_awaddr     ),
+    .axlen         ( usr_awlen      ),
+    .axsize        ( usr_awsize     ),
+    .axburst       ( usr_awburst    ),
+    .axvalid       ( usr_awvalid    ),
+    .axready       ( usr_awready    ) 
 );
 
 ami_w #(
-//--------- AXI PARAMETERS -------
-.AXI_DW     ( AXI_DW     ),
-.AXI_AW     ( AXI_AW     ),
-.AXI_IW     ( AXI_IW     ),
-.AXI_LW     ( AXI_LW     ),
-.AXI_SW     ( AXI_SW     ),
-.AXI_BURSTW ( AXI_BURSTW ),
-.AXI_BRESPW ( AXI_BRESPW ),
-.AXI_RRESPW ( AXI_RRESPW ),
-//--------- AMI CONFIGURE --------
-.AMI_OD     ( AMI_OD     ),
-.AMI_AD     ( AMI_AD     ),
-.AMI_RD     ( AMI_RD     ),
-.AMI_WD     ( AMI_WD     ),
-.AMI_BD     ( AMI_BD     ),
-//-------- DERIVED PARAMETERS ----
-.AXI_BYTES  ( AXI_BYTES  ),
-.AXI_WSTRBW ( AXI_WSTRBW ),
-.AXI_BYTESW ( AXI_BYTESW )
+    //--------- AXI PARAMETERS -------
+    .AXI_DW     ( AXI_DW     ),
+    .AXI_AW     ( AXI_AW     ),
+    .AXI_IW     ( AXI_IW     ),
+    .AXI_LW     ( AXI_LW     ),
+    .AXI_SW     ( AXI_SW     ),
+    .AXI_BURSTW ( AXI_BURSTW ),
+    .AXI_BRESPW ( AXI_BRESPW ),
+    .AXI_RRESPW ( AXI_RRESPW ),
+    //--------- AMI CONFIGURE --------
+    .AMI_OD     ( AMI_OD     ),
+    .AMI_AD     ( AMI_AD     ),
+    .AMI_RD     ( AMI_RD     ),
+    .AMI_WD     ( AMI_WD     ),
+    .AMI_BD     ( AMI_BD     ),
+    //-------- DERIVED PARAMETERS ----
+    .AXI_BYTES  ( AXI_BYTES  ),
+    .AXI_WSTRBW ( AXI_WSTRBW ),
+    .AXI_BYTESW ( AXI_BYTESW ),
+    .BL         ( BL         ),
+    .L          ( L          ),
+    .B          ( B          )
 ) w_inf (
     .*
 );
 
 ami_r #(
-//--------- AXI PARAMETERS -------
-.AXI_DW     ( AXI_DW     ),
-.AXI_AW     ( AXI_AW     ),
-.AXI_IW     ( AXI_IW     ),
-.AXI_LW     ( AXI_LW     ),
-.AXI_SW     ( AXI_SW     ),
-.AXI_BURSTW ( AXI_BURSTW ),
-.AXI_BRESPW ( AXI_BRESPW ),
-.AXI_RRESPW ( AXI_RRESPW ),
-//--------- AMI CONFIGURE --------
-.AMI_OD     ( AMI_OD     ),
-.AMI_AD     ( AMI_AD     ),
-.AMI_RD     ( AMI_RD     ),
-.AMI_WD     ( AMI_WD     ),
-.AMI_BD     ( AMI_BD     ),
-//-------- DERIVED PARAMETERS ----
-.AXI_BYTES  ( AXI_BYTES  ),
-.AXI_WSTRBW ( AXI_WSTRBW ),
-.AXI_BYTESW ( AXI_BYTESW )
+    //--------- AXI PARAMETERS -------
+    .AXI_DW     ( AXI_DW     ),
+    .AXI_AW     ( AXI_AW     ),
+    .AXI_IW     ( AXI_IW     ),
+    .AXI_LW     ( AXI_LW     ),
+    .AXI_SW     ( AXI_SW     ),
+    .AXI_BURSTW ( AXI_BURSTW ),
+    .AXI_BRESPW ( AXI_BRESPW ),
+    .AXI_RRESPW ( AXI_RRESPW ),
+    //--------- AMI CONFIGURE --------
+    .AMI_OD     ( AMI_OD     ),
+    .AMI_AD     ( AMI_AD     ),
+    .AMI_RD     ( AMI_RD     ),
+    .AMI_WD     ( AMI_WD     ),
+    .AMI_BD     ( AMI_BD     ),
+    //-------- DERIVED PARAMETERS ----
+    .AXI_BYTES  ( AXI_BYTES  ),
+    .AXI_WSTRBW ( AXI_WSTRBW ),
+    .AXI_BYTESW ( AXI_BYTESW ),
+    .BL         ( BL         ),
+    .L          ( L          ),
+    .B          ( B          )
 ) r_inf (
     .*
 );

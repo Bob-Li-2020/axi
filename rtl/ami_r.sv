@@ -5,9 +5,9 @@
 
 module ami_r // ami_r: Axi Master Interface Read
 #(
-   //--------- AXI PARAMETERS -------
+    //--------- AXI PARAMETERS -------
     AXI_DW     = 128                 , // AXI DATA    BUS WIDTH
-    AXI_AW     = 32                  , // AXI ADDRESS BUS WIDTH
+    AXI_AW     = 32                  , // AXI ADDRESS BUS WIDTH(MUST <= 32)
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
@@ -23,7 +23,10 @@ module ami_r // ami_r: Axi Master Interface Read
     //-------- DERIVED PARAMETERS ----
     AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_BYTESW = $clog2(AXI_BYTES+1) ,
+    BL         = 16                  , // default burst length
+    L          = $clog2(AXI_BYTES)   ,
+    B          = $clog2(BL)+L 
 )(
     //---- AXI GLOBAL ---------------------------
     input  logic                    ACLK        ,

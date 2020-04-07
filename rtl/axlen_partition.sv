@@ -23,7 +23,10 @@ module axlen_partition
     //-------- DERIVED PARAMETERS ----
     AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_BYTESW = $clog2(AXI_BYTES+1) ,  
+    BL         = 16                  , // default burst length
+    L          = $clog2(AXI_BYTES)   ,
+    B          = $clog2(BL)+L 
 )(
     input  logic                    clk           ,
     input  logic                    reset_n       ,
@@ -44,11 +47,6 @@ module axlen_partition
 
 timeunit 1ns;
 timeprecision 1ps;
-
-localparam 
-BL = 16, // default burst length
-L = $clog2(AXI_BYTES),
-B = $clog2(BL)+L;
 
 enum logic { IDLE=1'b0, BUSY } st_cur, st_nxt;
 

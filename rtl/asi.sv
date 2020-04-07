@@ -97,10 +97,10 @@ module asi
     //---- RAM INTERFACE -----------------------
     input  logic                    RAM_CLK    ,
     input  logic                    RAM_RESETn ,
-    output logic [AXI_AW-1     : 0] RAM_A      , // RAM Address
     output logic                    RAM_CEN    , // RAM Clock Enable. Active-Low
-    output logic [AXI_DW-1     : 0] RAM_D      , // RAM D
     output logic [AXI_WSTRBW-1 : 0] RAM_WEN    , // RAM Write Enable. Active-Low
+    output logic [AXI_AW-1     : 0] RAM_A      , // RAM Address
+    output logic [AXI_DW-1     : 0] RAM_D      , // RAM D
     input  logic [AXI_DW-1     : 0] RAM_Q        // RAM Q
 );
 
