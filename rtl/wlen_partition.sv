@@ -1,3 +1,8 @@
+//-- AUTHOR: LIBING
+//-- DATE: 2020.3
+//-- Description: DMA.WRITE AXI burst length partition
+
+
 module wlen_partition 
 #(
     //--------- AXI PARAMETERS -------

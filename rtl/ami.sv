@@ -96,12 +96,12 @@ module ami //ami: Axi Master Interface
     output logic                    cfg_dmar_ready  ,
     input  logic [31           : 0] cfg_dmar_sa     , // dma read start address   
     input  logic [31           : 0] cfg_dmar_len    , // dma read length in bytes
-    //---- DMA WRITE DATA ---------------------------
-    input  logic [AXI_DW-1     : 0] dmaw_data       ,
-    input  logic [AXI_WSTRBW-1 : 0] dmaw_strb       ,
-    input  logic                    dmaw_last       ,
-    input  logic                    dmaw_valid      ,
-    output logic                    dmaw_ready       
+    //---- USER W  -----------------------
+    input  logic [AXI_DW-1     : 0] usr_wdata       ,
+    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb       ,
+    input  logic                    usr_wlast       ,
+    input  logic                    usr_wvalid      ,
+    output logic                    usr_wready   
 );
 
 timeunit 1ns;
@@ -115,12 +115,6 @@ logic [AXI_SW-1     : 0] usr_awsize  ;
 logic [AXI_BURSTW-1 : 0] usr_awburst ;
 logic                    usr_awvalid ;
 logic                    usr_awready ;
-//---- USER W  -----------------------
-logic [AXI_DW-1     : 0] usr_wdata   ;
-logic [AXI_WSTRBW-1 : 0] usr_wstrb   ;
-logic                    usr_wlast   ;
-logic                    usr_wvalid  ;
-logic                    usr_wready  ;
 //---- USER B  -----------------------
 logic [AXI_IW-1     : 0] usr_bid     ;
 logic [AXI_BRESPW-1 : 0] usr_bresp   ;
@@ -144,6 +138,42 @@ logic                    usr_rready  ;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
+
+wlen_partition #(
+    //--------- AXI PARAMETERS -------
+    .AXI_DW(AXI_DW),
+    .AXI_AW(AXI_AW),
+    .AXI_IW(AXI_IW),
+    .AXI_LW(AXI_LW),
+    .AXI_SW(AXI_SW),
+    .AXI_BURSTW(AXI_BURSTW),
+    .AXI_BRESPW(AXI_BRESPW),
+    .AXI_RRESPW(AXI_RRESPW),
+    //--------- AMI CONFIGURE --------
+    .AMI_OD(AMI_OD),
+    .AMI_AD(AMI_AD),
+    .AMI_RD(AMI_RD),
+    .AMI_WD(AMI_WD),
+    .AMI_BD(AMI_BD),
+    //-------- DERIVED PARAMETERS ----
+    .AXI_BYTES(AXI_BYTES),
+    .AXI_WSTRBW(AXI_WSTRBW),
+    .AXI_BYTESW(AXI_BYTESW)
+) u_partition (
+    .clk            (usr_clk            ),
+    .reset_n        (usr_reset_n        ),
+    .cfg_dmaw_valid (cfg_dmaw_valid ),
+    .cfg_dmaw_ready (cfg_dmaw_ready ),
+    .cfg_dmaw_sa    (cfg_dmaw_sa    ),
+    .cfg_dmaw_len   (cfg_dmaw_len   ),
+    .awid           (usr_awid           ),
+    .awaddr         (usr_awaddr         ),
+    .awlen          (usr_awlen          ),
+    .awsize         (usr_awsize         ),
+    .awburst        (usr_awburst        ),
+    .awvalid        (usr_awvalid        ),
+    .awready        (usr_awready        ) 
+);
 
 ami_w #(
 //--------- AXI PARAMETERS -------
