@@ -73,9 +73,10 @@ class VerilogBeautifier:
             if os.path.isfile(dst):
                 print(f'{dst} already exist, skip copying')
             else:
-                print(f'copying src: {src}')
-                print(f'copying dst: {dst}')
-                copyfile(src,dst)
+                pass # no copying
+                #print(f'copying src: {src}')
+                #print(f'copying dst: {dst}')
+                #copyfile(src,dst)
 
     def beautify_module_instances(self, lines, start_i, finish_i):
         """ perform module instantiation beautifying, e.g., .DW(DW) -> .DW( DW       )
