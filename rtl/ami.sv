@@ -141,7 +141,7 @@ logic                    usr_arready ;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
-
+assign usr_bready = 1'b1;
 axlen_partition #(
     //--------- AXI PARAMETERS -------
     .AXI_DW     ( AXI_DW     ),
