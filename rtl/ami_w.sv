@@ -175,7 +175,7 @@ assign WSTRB              = wq_strb          ;
 assign WLAST              = wff_re && burst_cc==lff_q_latch;
 assign WVALID             = !wff_rempty && ost_cc2>0 && bursting;
 assign BREADY             = !bff_wfull       ;
-assign usr_awready        = !aff_wfull       ;
+assign usr_awready        = !aff_wfull & !lff_wfull;
 assign usr_wready         = !wff_wfull       ;
 assign usr_bid            = bq_bid           ;
 assign usr_bresp          = bq_bresp         ;
