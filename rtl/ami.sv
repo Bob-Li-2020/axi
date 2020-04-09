@@ -94,11 +94,17 @@ module ami //ami: Axi Master Interface
     output logic                    cfg_dmaw_ready ,
     input  logic [31           : 0] cfg_dmaw_sa    , // dma write start address   
     input  logic [31           : 0] cfg_dmaw_len   , // dma write length
+    input  logic                    dmaw_irq_w1c   , // dmaw interrupt write 1 clear
+    output logic                    dmaw_irq       , // dmaw interrupt
+    output logic [3            : 0] dmaw_err       , // dmaw error
     //---- CONFIG DMA READ -------------------------
     input  logic                    cfg_dmar_valid ,
     output logic                    cfg_dmar_ready ,
     input  logic [31           : 0] cfg_dmar_sa    , // dma read start address   
     input  logic [31           : 0] cfg_dmar_len   , // dma read length
+    input  logic                    dmar_irq_w1c   , // dmar interrupt write 1 clear
+    output logic                    dmar_irq       , // dmar interrupt
+    output logic [3            : 0] dmar_err       , // dmaw error
     //---- USER W  ---------------------------------
     input  logic [AXI_DW-1     : 0] usr_wdata      ,
     input  logic [AXI_WSTRBW-1 : 0] usr_wstrb      ,
@@ -110,8 +116,7 @@ module ami //ami: Axi Master Interface
     output logic [AXI_DW-1     : 0] usr_rdata      ,
     output logic [AXI_RRESPW-1 : 0] usr_rresp      ,
     output logic                    usr_rlast      ,
-    output logic                    usr_rvalid     ,
-    input  logic                    usr_rready      
+    output logic                    usr_rvalid      
 );
 
 timeunit 1ns;
@@ -138,10 +143,12 @@ logic [AXI_SW-1     : 0] usr_arsize  ;
 logic [AXI_BURSTW-1 : 0] usr_arburst ;
 logic                    usr_arvalid ;
 logic                    usr_arready ;
+//---- USER R ------------------------
+logic                    usr_rready  ;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
-assign usr_bready = 1'b1;
+
 axlen_partition #(
     //--------- AXI PARAMETERS -------
     .AXI_DW     ( AXI_DW     ),
@@ -173,6 +180,9 @@ axlen_partition #(
     .cfg_dma_ready ( cfg_dmar_ready ),
     .cfg_dma_sa    ( cfg_dmar_sa    ),
     .cfg_dma_len   ( cfg_dmar_len   ),
+    .dma_irq_w1c   ( dmar_irq_w1c   ),
+    .dma_irq       ( dmar_irq       ),
+    .dma_err       ( dmar_err       ),
 
     .axid          ( usr_arid       ),
     .axaddr        ( usr_araddr     ),
@@ -180,7 +190,12 @@ axlen_partition #(
     .axsize        ( usr_arsize     ),
     .axburst       ( usr_arburst    ),
     .axvalid       ( usr_arvalid    ),
-    .axready       ( usr_arready    ) 
+    .axready       ( usr_arready    ),
+
+    .usr_bid       ( usr_rid        ),
+    .usr_bresp     ( usr_rresp      ),     
+    .usr_bvalid    ( usr_rlast      ),
+    .usr_bready    ( usr_rready     ) 
 );
 
 axlen_partition #(
@@ -214,6 +229,9 @@ axlen_partition #(
     .cfg_dma_ready ( cfg_dmaw_ready ),
     .cfg_dma_sa    ( cfg_dmaw_sa    ),
     .cfg_dma_len   ( cfg_dmaw_len   ),
+    .dma_irq_w1c   ( dmaw_irq_w1c   ),
+    .dma_irq       ( dmaw_irq       ),
+    .dma_err       ( dmaw_err       ),
 
     .axid          ( usr_awid       ),
     .axaddr        ( usr_awaddr     ),
@@ -221,7 +239,12 @@ axlen_partition #(
     .axsize        ( usr_awsize     ),
     .axburst       ( usr_awburst    ),
     .axvalid       ( usr_awvalid    ),
-    .axready       ( usr_awready    ) 
+    .axready       ( usr_awready    ), 
+
+    .usr_bid       ( usr_bid        ),
+    .usr_bresp     ( usr_bresp      ),     
+    .usr_bvalid    ( usr_bvalid     ),
+    .usr_bready    ( usr_bready     ) 
 );
 
 ami_w #(
