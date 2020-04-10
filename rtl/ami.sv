@@ -112,11 +112,10 @@ module ami //ami: Axi Master Interface
     input  logic                    usr_wvalid     ,
     output logic                    usr_wready     ,
     //---- USER R  ---------------------------------
-    output logic [AXI_IW-1     : 0] usr_rid        ,
     output logic [AXI_DW-1     : 0] usr_rdata      ,
-    output logic [AXI_RRESPW-1 : 0] usr_rresp      ,
     output logic                    usr_rlast      ,
-    output logic                    usr_rvalid      
+    output logic                    usr_rvalid     ,
+    input  logic                    usr_rready  
 );
 
 timeunit 1ns;
@@ -144,7 +143,8 @@ logic [AXI_BURSTW-1 : 0] usr_arburst ;
 logic                    usr_arvalid ;
 logic                    usr_arready ;
 //---- USER R ------------------------
-logic                    usr_rready  ;
+logic [AXI_IW-1     : 0] usr_rid     ;
+logic [AXI_RRESPW-1 : 0] usr_rresp   ;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
@@ -173,29 +173,29 @@ axlen_partition #(
     .L          ( L          ),
     .B          ( B          )
 ) arlen_partition (
-    .clk           ( usr_clk        ),
-    .reset_n       ( usr_reset_n    ),
+    .clk           ( usr_clk                ),
+    .reset_n       ( usr_reset_n            ),
 
-    .cfg_dma_valid ( cfg_dmar_valid ),
-    .cfg_dma_ready ( cfg_dmar_ready ),
-    .cfg_dma_sa    ( cfg_dmar_sa    ),
-    .cfg_dma_len   ( cfg_dmar_len   ),
-    .dma_irq_w1c   ( dmar_irq_w1c   ),
-    .dma_irq       ( dmar_irq       ),
-    .dma_err       ( dmar_err       ),
+    .cfg_dma_valid ( cfg_dmar_valid         ),
+    .cfg_dma_ready ( cfg_dmar_ready         ),
+    .cfg_dma_sa    ( cfg_dmar_sa            ),
+    .cfg_dma_len   ( cfg_dmar_len           ),
+    .dma_irq_w1c   ( dmar_irq_w1c           ),
+    .dma_irq       ( dmar_irq               ),
+    .dma_err       ( dmar_err               ),
 
-    .axid          ( usr_arid       ),
-    .axaddr        ( usr_araddr     ),
-    .axlen         ( usr_arlen      ),
-    .axsize        ( usr_arsize     ),
-    .axburst       ( usr_arburst    ),
-    .axvalid       ( usr_arvalid    ),
-    .axready       ( usr_arready    ),
+    .axid          ( usr_arid               ),
+    .axaddr        ( usr_araddr             ),
+    .axlen         ( usr_arlen              ),
+    .axsize        ( usr_arsize             ),
+    .axburst       ( usr_arburst            ),
+    .axvalid       ( usr_arvalid            ),
+    .axready       ( usr_arready            ),
 
-    .usr_bid       ( usr_rid        ),
-    .usr_bresp     ( usr_rresp      ),     
-    .usr_bvalid    ( usr_rlast      ),
-    .usr_bready    ( usr_rready     ) 
+    .usr_bid       ( usr_rid                ),
+    .usr_bresp     ( usr_rresp              ),     
+    .usr_bvalid    ( usr_rvalid & usr_rlast ),
+    .usr_bready    (                        ) 
 );
 
 axlen_partition #(

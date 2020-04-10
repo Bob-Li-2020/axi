@@ -140,10 +140,10 @@ assign aff_d        = {usr_arid, usr_araddr, usr_arlen, usr_arsize, usr_arburst}
 assign {aq_id, aq_addr, aq_len, aq_size, aq_burst} = aff_q;
 
 // r fifo
-assign rff_wreset_n = usr_reset_n      ; 
-assign rff_rreset_n = ARESETn          ;
-assign rff_wclk     = usr_clk          ;
-assign rff_rclk     = ACLK             ;
+assign rff_wreset_n = ARESETn          ; 
+assign rff_rreset_n = usr_reset_n      ;
+assign rff_wclk     = ACLK             ;
+assign rff_rclk     = usr_clk          ;
 assign rff_we       = RVALID & RREADY  ;
 assign rff_re       = usr_rvalid & usr_rready;
 assign rff_d        = {RID, RDATA, RRESP, RLAST};

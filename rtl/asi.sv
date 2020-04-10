@@ -39,7 +39,7 @@ module asi
     ASI_RD     = 16                  , // ASI R CHANNEL BUFFER DEPTH
     ASI_WD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
     ASI_BD     = 16                  , // ASI B CHANNEL BUFFER DEPTH
-    ASI_ARB    = 0                   , // 1-GRANT READ WITH HIGHER PRIORITY; 0-GRANT WRITE WITH HIGHER PRIORITY
+    ASI_ARB    = 0                   , // 0-GRANT WRITE WITH HIGHER PRIORITY; otherwise-GRANT READ WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE
     //-------- DERIVED PARAMETERS ----
@@ -197,13 +197,13 @@ always_comb begin
     case(st_cur)
         ARB_IDLE: begin
             st_nxt = st_cur;
-            if(arff_v & (!awff_v | ASI_ARB))
+            if(arff_v & (!awff_v || ASI_ARB!=0))
                 st_nxt = ARB_READ;
-            if(awff_v & (!arff_v | !ASI_ARB))
+            if(awff_v & (!arff_v || ASI_ARB==0))
                 st_nxt = ARB_WRITE;
         end
-        ARB_READ: st_nxt = rlast ? (awff_v ? ARB_WRITE : ARB_IDLE) : st_cur;
-        ARB_WRITE: st_nxt = wlast ? (arff_v ? ARB_READ : ARB_IDLE) : st_cur;
+        ARB_READ : st_nxt = rlast & (awff_v | ~arff_v) ? (awff_v ? ARB_WRITE : ARB_IDLE) : st_cur;
+        ARB_WRITE: st_nxt = wlast & (arff_v | ~awff_v) ? (arff_v ? ARB_READ  : ARB_IDLE) : st_cur;
         default: st_nxt = ARB_IDLE;
     endcase
 end
