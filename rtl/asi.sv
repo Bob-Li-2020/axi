@@ -35,10 +35,10 @@ module asi
     AXI_BRESPW = 2                   , // AXI BRESP   BITS WIDTH
     AXI_RRESPW = 2                   , // AXI RRESP   BITS WIDTH
     //--------- ASI CONFIGURE --------
-    ASI_AD     = 4                   , // ASI AW/AR CHANNEL BUFFER DEPTH
-    ASI_RD     = 64                  , // ASI R CHANNEL BUFFER DEPTH
-    ASI_WD     = 64                  , // ASI W CHANNEL BUFFER DEPTH
-    ASI_BD     = 4                   , // ASI B CHANNEL BUFFER DEPTH
+    ASI_AD     = 16                  , // ASI AW/AR CHANNEL BUFFER DEPTH
+    ASI_RD     = 16                  , // ASI R CHANNEL BUFFER DEPTH
+    ASI_WD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
+    ASI_BD     = 16                  , // ASI B CHANNEL BUFFER DEPTH
     ASI_ARB    = 0                   , // 1-GRANT READ WITH HIGHER PRIORITY; 0-GRANT WRITE WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE

@@ -189,7 +189,7 @@ afifo #(
 always_ff @(posedge ACLK or negedge ARESETn)
     if(!ARESETn)
         ost_cc <= '0;
-    else if(aff_re || RLAST & RREADY)
-        ost_cc <= ost_cc+aff_re-(RLAST & RREADY);
+    else if(aff_re || RLAST & RREADY & RVALID)
+        ost_cc <= ost_cc+aff_re-(RLAST & RREADY & RVALID);
 
 endmodule

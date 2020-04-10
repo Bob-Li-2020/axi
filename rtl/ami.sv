@@ -27,10 +27,10 @@ module ami //ami: Axi Master Interface
     AXI_RRESPW = 2                   , // AXI RRESP   BITS WIDTH
     //--------- AMI CONFIGURE --------
     AMI_OD     = 4                   , // AMI OUTSTANDING DEPTH
-    AMI_AD     = 4                   , // AMI AW/AR CHANNEL BUFFER DEPTH
-    AMI_RD     = 64                  , // AMI R CHANNEL BUFFER DEPTH
-    AMI_WD     = 64                  , // AMI W CHANNEL BUFFER DEPTH
-    AMI_BD     = 4                   , // AMI B CHANNEL BUFFER DEPTH
+    AMI_AD     = 16                  , // AMI AW/AR CHANNEL BUFFER DEPTH
+    AMI_RD     = 16                  , // AMI R CHANNEL BUFFER DEPTH
+    AMI_WD     = 16                  , // AMI W CHANNEL BUFFER DEPTH
+    AMI_BD     = 16                  , // AMI B CHANNEL BUFFER DEPTH
     //-------- DERIVED PARAMETERS ----
     AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
