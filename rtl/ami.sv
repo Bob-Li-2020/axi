@@ -195,7 +195,7 @@ axlen_partition #(
     .usr_bid       ( usr_rid                ),
     .usr_bresp     ( usr_rresp              ),     
     .usr_bvalid    ( usr_rvalid & usr_rlast ),
-    .usr_bready    (                        ) 
+    .usr_bready    ( usr_rready             ) 
 );
 
 axlen_partition #(
@@ -244,7 +244,7 @@ axlen_partition #(
     .usr_bid       ( usr_bid        ),
     .usr_bresp     ( usr_bresp      ),     
     .usr_bvalid    ( usr_bvalid     ),
-    .usr_bready    ( usr_bready     ) 
+    .usr_bready    ( 1'b1           ) 
 );
 
 ami_w #(
@@ -300,4 +300,16 @@ ami_r #(
 ) r_inf (
     .*
 );
+
+// --debug
+//always_ff @(posedge usr_clk)
+//    if(usr_rvalid & usr_rready)
+//        $display("%m: %0t: usr_rdata = %0d", $realtime, usr_rdata);
+//initial begin
+//while(1) begin
+//    while(1'b1!==(usr_rvalid&usr_rready)) @(posedge usr_clk);
+//    $display("%m: %0t: usr_rvalid = %b; usr_rready = %b; usr_rdata = %0d", $realtime, usr_rvalid, usr_rready, usr_rdata);
+//    @(posedge usr_clk);
+//end
+//end
 endmodule

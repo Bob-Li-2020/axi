@@ -54,7 +54,7 @@ module axlen_partition
     input  logic [AXI_IW-1     : 0] usr_bid       ,
     input  logic [AXI_BRESPW-1 : 0] usr_bresp     ,
     input  logic                    usr_bvalid    ,
-    output logic                    usr_bready     
+    input  logic                    usr_bready     
 );
 
 timeunit 1ns;
@@ -92,7 +92,6 @@ assign axlen         = min2_len(axlen_prompt, len);
 assign axsize        = AXI_SW'($clog2(AXI_BYTES));
 assign axburst       = AXI_BURSTW'(1)    ;
 assign axvalid       = st_cur==BUSY      ;
-assign usr_bready    = st_cur==BUSY || st_cur==RESP;
 
 assign axlen_prompt  = {'0, ~addr[B-1:L]};
 assign addr_last     = axvalid & axready && len-axlen-1'b1=='0;
