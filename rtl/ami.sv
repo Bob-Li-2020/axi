@@ -148,6 +148,7 @@ logic [AXI_RRESPW-1 : 0] usr_rresp   ;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
+assign usr_bready = 1'b1; // always ready to receive B channel output
 
 axlen_partition #(
     //--------- AXI PARAMETERS -------
@@ -244,7 +245,7 @@ axlen_partition #(
     .usr_bid       ( usr_bid        ),
     .usr_bresp     ( usr_bresp      ),     
     .usr_bvalid    ( usr_bvalid     ),
-    .usr_bready    ( 1'b1           ) 
+    .usr_bready    ( usr_bready     ) 
 );
 
 ami_w #(
