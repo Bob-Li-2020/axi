@@ -88,6 +88,7 @@ logic                    aff_wfull    ;
 logic                    aff_wafull   ;
 logic                    aff_rempty   ;
 logic [AFF_AW       : 0] aff_wcnt     ;
+logic [AFF_AW       : 0] aff_rcnt     ;
 logic [AFF_DW-1     : 0] aff_d        ;
 logic [AFF_DW-1     : 0] aff_q        ;
 logic [AXI_IW-1     : 0] aq_id        ;
@@ -107,6 +108,7 @@ logic                    rff_wfull    ;
 logic                    rff_wafull   ;
 logic                    rff_rempty   ;
 logic [RFF_AW       : 0] rff_wcnt     ;
+logic [RFF_AW       : 0] rff_rcnt     ;
 logic [RFF_DW-1     : 0] rff_d        ;
 logic [RFF_DW-1     : 0] rff_q        ;
 logic [AXI_IW-1     : 0] rq_id        ;
@@ -164,6 +166,7 @@ afifo #(
     .wafull   ( aff_wafull   ), 
     .rempty   ( aff_rempty   ),
     .wcnt     ( aff_wcnt     ),
+    .rcnt     ( aff_rcnt     ),
     .d        ( aff_d        ),
     .q        ( aff_q        ) 
 );
@@ -182,6 +185,7 @@ afifo #(
     .wafull   ( rff_wafull   ), 
     .rempty   ( rff_rempty   ),
     .wcnt     ( rff_wcnt     ),
+    .rcnt     ( rff_rcnt     ),
     .d        ( rff_d        ),
     .q        ( rff_q        ) 
 );

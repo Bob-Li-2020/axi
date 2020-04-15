@@ -115,7 +115,7 @@ module ami //ami: Axi Master Interface
     output logic [AXI_DW-1     : 0] usr_rdata      ,
     output logic                    usr_rlast      ,
     output logic                    usr_rvalid     ,
-    input  logic                    usr_rready  
+    input  logic                    usr_rready      
 );
 
 timeunit 1ns;

@@ -104,6 +104,7 @@ logic                    aff_wfull    ;
 logic                    aff_wafull   ;
 logic                    aff_rempty   ;
 logic [AFF_AW       : 0] aff_wcnt     ;
+logic [AFF_AW       : 0] aff_rcnt     ;
 logic [AFF_DW-1     : 0] aff_d        ;
 logic [AFF_DW-1     : 0] aff_q        ;
 logic [AXI_IW-1     : 0] aq_id        ;
@@ -123,6 +124,7 @@ logic                    wff_wfull    ;
 logic                    wff_wafull   ;
 logic                    wff_rempty   ;
 logic [WFF_AW       : 0] wff_wcnt     ;
+logic [WFF_AW       : 0] wff_rcnt     ;
 logic [WFF_DW-1     : 0] wff_d        ;
 logic [WFF_DW-1     : 0] wff_q        ;
 logic [AXI_DW-1     : 0] wq_data      ;
@@ -140,6 +142,7 @@ logic                    bff_wfull    ;
 logic                    bff_wafull   ;
 logic                    bff_rempty   ;
 logic [BFF_AW       : 0] bff_wcnt     ;
+logic [BFF_AW       : 0] bff_rcnt     ;
 logic [BFF_DW-1     : 0] bff_d        ;
 logic [BFF_DW-1     : 0] bff_q        ;
 logic [AXI_IW-1     : 0] bq_bid       ;
@@ -156,6 +159,7 @@ logic                    lff_wfull    ;
 logic                    lff_wafull   ;
 logic                    lff_rempty   ;
 logic [LFF_AW       : 0] lff_wcnt     ;
+logic [LFF_AW       : 0] lff_rcnt     ;
 logic [LFF_DW-1     : 0] lff_d        ;
 logic [LFF_DW-1     : 0] lff_q        ;
 logic [LFF_DW-1     : 0] lff_q_latch  ;
@@ -258,6 +262,7 @@ afifo #(
     .wafull   ( aff_wafull   ), 
     .rempty   ( aff_rempty   ),
     .wcnt     ( aff_wcnt     ),
+    .rcnt     ( aff_rcnt     ),
     .d        ( aff_d        ),
     .q        ( aff_q        ) 
 );
@@ -276,6 +281,7 @@ afifo #(
     .wafull   ( wff_wafull   ), 
     .rempty   ( wff_rempty   ),
     .wcnt     ( wff_wcnt     ),
+    .rcnt     ( wff_rcnt     ),
     .d        ( wff_d        ),
     .q        ( wff_q        ) 
 );
@@ -294,6 +300,7 @@ afifo #(
     .wafull   ( bff_wafull   ), 
     .rempty   ( bff_rempty   ),
     .wcnt     ( bff_wcnt     ),
+    .rcnt     ( bff_rcnt     ),
     .d        ( bff_d        ),
     .q        ( bff_q        ) 
 );
@@ -312,6 +319,7 @@ afifo #(
     .wafull   ( lff_wafull   ), 
     .rempty   ( lff_rempty   ),
     .wcnt     ( lff_wcnt     ),
+    .rcnt     ( lff_rcnt     ),
     .d        ( lff_d        ),
     .q        ( lff_q        ) 
 );
