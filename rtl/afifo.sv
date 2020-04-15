@@ -16,6 +16,7 @@ module afifo #(
     output logic            wafull   , // almost full
     output logic            rempty   ,
     output logic [AW   : 0] wcnt     , // write side counter
+    output logic [AW   : 0] rcnt     , // read side counter
     input  logic [DW-1 : 0] d        ,
     output logic [DW-1 : 0] q         
 );
@@ -24,10 +25,12 @@ timeprecision 1ps;
 wire   EmptyN ;
 wire   FullN  ;
 wire  [AW:0]  WNum;
+wire  [AW:0]  RNum;
 assign wfull  = ~FullN ;
 assign rempty = ~EmptyN;
 assign wafull = WNum >= AFN;
 assign wcnt   = WNum;
+assign rcnt   = RNum;
 util_fifoa #(
     .AW ( AW ),
     .DW ( DW )
@@ -44,7 +47,7 @@ util_fifoa #(
     .WData     ( d                   ),
     .RData     ( q                   ),
     .WNum      ( WNum                ),
-    .RNum(),
+    .RNum      ( RNum                ),
     .TEST_MODE ( 1'b0                )
 );
 endmodule

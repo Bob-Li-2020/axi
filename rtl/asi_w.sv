@@ -1,7 +1,7 @@
 //-- AUTHOR: LIBING
 //-- DATE: 2019.12
 //-- DESCRIPTION: AXI SLAVE INTERFACE.WRITE. BASED ON AXI4 SPEC.
-
+// ! NO SUPPORT WRAP ! ! NO ACCEPT 'BT_RESERVED' BURST TYPE !
 
 // asi_w: Axi Slave Interface Write
 module asi_w 
@@ -70,44 +70,36 @@ module asi_w
     //ERROR FLAGS
     input  logic                    usr_wsize_error   // unsupported transfer size
 );
+
 timeunit 1ns;
 timeprecision 1ps;
-//------------------------------------
-//------ INTERFACE PARAMETERS --------
-//------------------------------------
+
 localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW,
            WFF_DW = AXI_DW + AXI_WSTRBW + 1,
-           BFF_DW = AXI_IW + AXI_BRESPW;
-localparam OADDR_DEPTH = ASI_AD , // outstanding addresses buffer depth
-           WDATA_DEPTH = ASI_WD , // write data buffer depth
-           BRESP_DEPTH = ASI_BD , // write response buffer depth
-           AFF_AW = $clog2(OADDR_DEPTH),
-           WFF_AW = $clog2(WDATA_DEPTH),
-           BFF_AW = $clog2(BRESP_DEPTH);
+           BFF_DW = AXI_IW + AXI_BRESPW,
+           AFF_AW = $clog2(ASI_AD),
+           WFF_AW = $clog2(ASI_WD),
+           BFF_AW = $clog2(ASI_BD);
+
 localparam [AXI_BURSTW-1 : 0] BT_FIXED     = AXI_BURSTW'(0);
 localparam [AXI_BURSTW-1 : 0] BT_INCR      = AXI_BURSTW'(1);
 localparam [AXI_BURSTW-1 : 0] BT_WRAP      = AXI_BURSTW'(2);
 localparam [AXI_BURSTW-1 : 0] BT_RESERVED  = AXI_BURSTW'(3);
-//----------------------------------------------------------------------------//
-//-- !! TRANSFER MAY OCCUR IN <BP_FIRST> and <BP_BURST> !!--------------------//
-//-- !! RESPONSE MAY OCCUR IN <BP_FIRST>  or <BP_BURST> or <BP_BRESP> !! -----//
-//----------------------------------------------------------------------------//
+
 // BP_FIRST: transfer the first transfer
 // BP_BURST: transfer the rest  transfer(s)
 // BP_BRESP: waiting for sending write response 
 // BP_IDLE : do nothing
-typedef enum logic [1:0] { BP_FIRST=2'b00, BP_BURST, BP_BRESP, BP_IDLE } WBURST_PHASE; 
-//-----------------------------------------
-//------ EASY SIGNALS ---------------------
-//-----------------------------------------
+enum logic [1:0] { BP_FIRST=2'b00, BP_BURST, BP_BRESP, BP_IDLE } st_cur, st_nxt; 
+
+//------ easy signals ---------------------
 wire                     clk              ;
 wire                     rst_n            ;
 wire                     aff_rvalid       ;
-wire                     wff_rvalid       ;
+wire                     aff_rready       ;
 wire                     bff_rvalid       ;
-//-----------------------------------------
-//------ AW CHANNEL FIFO SIGNALS ----------
-//-----------------------------------------
+
+//------ aw fifo signals ------------------
 logic                    aff_wreset_n     ;
 logic                    aff_rreset_n     ;
 logic                    aff_wclk         ;
@@ -117,11 +109,21 @@ logic                    aff_re           ;
 logic                    aff_wfull        ;
 logic                    aff_rempty       ;
 logic [AFF_AW       : 0] aff_wcnt         ;
+logic [AFF_AW       : 0] aff_rcnt         ;
 logic [AFF_DW-1     : 0] aff_d            ;
 logic [AFF_DW-1     : 0] aff_q            ;
-//-----------------------------------------
-//------ W CHANNEL FIFO SIGNALS -----------
-//-----------------------------------------
+logic [AXI_IW-1     : 0] aq_id            ;
+logic [AXI_AW-1     : 0] aq_addr          ;
+logic [AXI_LW-1     : 0] aq_len           ;
+logic [AXI_SW-1     : 0] aq_size          ;
+logic [AXI_BURSTW-1 : 0] aq_burst         ;
+logic [AXI_IW-1     : 0] aq_id_latch      ;
+logic [AXI_AW-1     : 0] aq_addr_latch    ;
+logic [AXI_LW-1     : 0] aq_len_latch     ;
+logic [AXI_SW-1     : 0] aq_size_latch    ;
+logic [AXI_BURSTW-1 : 0] aq_burst_latch   ;
+
+//------ w fifo signals -------------------
 logic                    wff_wreset_n     ;
 logic                    wff_rreset_n     ;
 logic                    wff_wclk         ;
@@ -131,11 +133,14 @@ logic                    wff_re           ;
 logic                    wff_wfull        ;
 logic                    wff_rempty       ;
 logic [WFF_AW       : 0] wff_wcnt         ;
+logic [WFF_AW       : 0] wff_rcnt         ;
 logic [WFF_DW-1     : 0] wff_d            ;
 logic [WFF_DW-1     : 0] wff_q            ;
-//-----------------------------------------
-//------ B CHANNEL FIFO SIGNALS -----------
-//-----------------------------------------
+logic [AXI_DW-1     : 0] wq_data          ;
+logic [AXI_WSTRBW-1 : 0] wq_strb          ;
+logic                    wq_last          ;
+
+//------ b fifo signals -------------------
 logic                    bff_wreset_n     ;
 logic                    bff_rreset_n     ;
 logic                    bff_wclk         ;
@@ -145,76 +150,32 @@ logic                    bff_re           ;
 logic                    bff_wfull        ;
 logic                    bff_rempty       ;
 logic [BFF_AW       : 0] bff_wcnt         ;
+logic [BFF_AW       : 0] bff_rcnt         ;
 logic [BFF_DW-1     : 0] bff_d            ;
 logic [BFF_DW-1     : 0] bff_q            ;
-//-----------------------------------------
-//------ AW FIFO Q SIGNALS ----------------
-//-----------------------------------------
-logic [AXI_IW-1     : 0] aq_id            ;
-logic [AXI_AW-1     : 0] aq_addr          ;
-logic [AXI_LW-1     : 0] aq_len           ;
-logic [AXI_SW-1     : 0] aq_size          ;
-logic [AXI_BURSTW-1 : 0] aq_burst         ;
-//-----------------------------------------
-//------ AW FIFO Q SIGNALS LATCH ----------
-//-----------------------------------------
-logic [AXI_IW-1     : 0] aq_id_latch      ;
-logic [AXI_AW-1     : 0] aq_addr_latch    ;
-logic [AXI_LW-1     : 0] aq_len_latch     ;
-logic [AXI_SW-1     : 0] aq_size_latch    ;
-logic [AXI_BURSTW-1 : 0] aq_burst_latch   ;
-//-----------------------------------------
-//------ W FIFO Q SIGNALS -----------------
-//-----------------------------------------
-logic [AXI_DW-1     : 0] wq_data          ;
-logic [AXI_WSTRBW-1 : 0] wq_strb          ;
-logic                    wq_last          ;
-//-----------------------------------------
-//------ B FIFO Q SIGNALS -----------------
-//-----------------------------------------
 logic [AXI_IW-1     : 0] bq_bid           ;
 logic [AXI_BRESPW-1 : 0] bq_bresp         ;
-//-----------------------------------------
-//------ AXI BURST ADDRESSES --------------
-//-----------------------------------------
+
+//------ burst addresses ------------------
 logic [AXI_BYTESW-1 : 0] burst_addr_inc   ;
 logic [AXI_AW-0     : 0] burst_addr_nxt   ;
 logic [AXI_AW-0     : 0] burst_addr_nxt_b ; // bounded to 4KB 
 logic [AXI_AW-1     : 0] burst_addr       ;
 logic [AXI_LW-1     : 0] burst_cc         ;
+logic                    burst_last       ;
 logic [AXI_AW-1     : 0] start_addr       ;
 logic [AXI_AW-1     : 0] start_addr_mask  ;
 logic [AXI_AW-1     : 0] aligned_addr     ;
-//-----------------------------------------
-//------------ 4KB ERROR ------------------
-//-----------------------------------------
 logic                    error_w4KB       ;
-//-----------------------------------------
-//------ TRANSFER SIZE ERROR --------------
-//-----------------------------------------
 logic                    trsize_err       ;
-//-----------------------------------------
-//------ WRITE RESPONSE VALUE -------------
-//-----------------------------------------
 logic [AXI_BRESPW-1 : 0] usr_bresp        ;
-//-----------------------------------------
-//------ STATE MACHINE VARIABLES ----------
-//-----------------------------------------
-logic                    burst_last       ;
-WBURST_PHASE             st_cur           ;
-WBURST_PHASE             st_nxt           ; 
-//-------------------------------------------------- LOGIC DESIGNS -----------------------------------------------------//
-//------------------------------------
-//------ OUTPUT PORTS ASSIGN ---------
-//------------------------------------
-//-- AXI HANDSHAKES
+
+// output
 assign AWREADY          = ~aff_wfull         ;
 assign WREADY           = ~wff_wfull         ;
-//-- AXI B CHANNEL
 assign BID              = bq_bid             ;
 assign BRESP            = bq_bresp           ;
 assign BVALID           = bff_rvalid         ;
-//-- USER LOGIC
 assign usr_wid          = st_cur==BP_FIRST ? aq_id    : aq_id_latch;      
 assign usr_wlen         = st_cur==BP_FIRST ? aq_len   : aq_len_latch;    
 assign usr_wsize        = st_cur==BP_FIRST ? aq_size  : aq_size_latch;  
@@ -224,41 +185,37 @@ assign usr_wdata        = wq_data            ;
 assign usr_wstrb        = wff_re ? wq_strb : '0;
 assign usr_wlast        = wff_re ? wq_last : '0; 
 assign usr_we           = wff_re             ;
-assign usr_wrequest     = !aff_rempty && !(wff_re && aq_len=='0 && st_cur==BP_FIRST);
+assign usr_wrequest     = aff_rcnt-aff_re>0;
 assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
-//------------------------------------
-//------ EASY ASSIGNMENTS ------------
-//------------------------------------
+
+// easy
 assign clk              = usr_clk            ;
 assign rst_n            = usr_reset_n        ;
-assign aff_rvalid       = !aff_rempty & !wff_rempty && st_cur==BP_FIRST; // awfifo read may only occur in state <BP_FIRST>
-assign wff_rvalid       = !aff_rempty & !wff_rempty && st_cur==BP_FIRST || !wff_rempty && st_cur==BP_BURST; 
+assign aff_rvalid       = !aff_rempty        ; 
+assign aff_rready       = !wff_rempty && st_cur==BP_FIRST && usr_wgrant;
 assign bff_rvalid       = !bff_rempty        ;
-//------------------------------------
-//------ AW CHANNEL FIFO ASSIGN ------
-//------------------------------------
+
+// aw fifo
 assign aff_wreset_n     = ARESETn            ;
 assign aff_rreset_n     = usr_reset_n        ;
 assign aff_wclk         = ACLK               ;
 assign aff_rclk         = usr_clk            ;
 assign aff_we           = AWVALID & AWREADY  ;
-assign aff_re           = aff_rvalid & usr_wgrant; 
+assign aff_re           = aff_rvalid & aff_rready; 
 assign aff_d            = { AWID, AWADDR, AWLEN, AWSIZE, AWBURST };
 assign { aq_id, aq_addr, aq_len, aq_size, aq_burst } = aff_q;
-//------------------------------------
-//------ W CHANNEL FIFO ASSIGN -------
-//------------------------------------
+
+// w fifo
 assign wff_wreset_n     = ARESETn            ;
 assign wff_rreset_n     = usr_reset_n        ;
 assign wff_wclk         = ACLK               ;
 assign wff_rclk         = usr_clk            ;
 assign wff_we           = WVALID & WREADY    ;
-assign wff_re           = wff_rvalid & usr_wgrant;
+assign wff_re           = aff_re || st_cur==BP_BURST && !wff_rempty;
 assign wff_d            = { WDATA, WSTRB, WLAST };
 assign { wq_data, wq_strb, wq_last } = wff_q ;
-//------------------------------------
-//------ B CHANNEL FIFO ASSIGN -------
-//------------------------------------
+
+// b fifo
 assign bff_wreset_n     = usr_reset_n        ;
 assign bff_rreset_n     = ARESETn            ;
 assign bff_wclk         = usr_clk            ;
@@ -267,23 +224,15 @@ assign bff_we           = !bff_wfull && (burst_last || st_cur==BP_BRESP);
 assign bff_re           = bff_rvalid & BREADY;
 assign bff_d            = {usr_wid, usr_bresp};
 assign { bq_bid, bq_bresp } = bff_q          ;
-//------------------------------------
-//------ TRANSFER SIZE ASSIGN --------
-//------------------------------------
-assign trsize_err       = (usr_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_wsize_error;
-//------------------------------------
-//------ WRITE RESPONSE VALUE --------
-//------------------------------------
-assign usr_bresp        = { trsize_err, 1'b0 };
-//------------------------------------
-//------ ADDRESS CALCULATION ---------
-//------------------------------------
-// ! DOES NOT SUPPORT WRAP ! ! DOES NOT ACCEPT 'BT_RESERVED' BURST TYPE !
-assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
+
+// burst
 assign burst_addr_inc   = usr_wburst==BT_FIXED ? '0 : (AXI_BYTESW'(1))<<usr_wsize;
 assign burst_addr_nxt   = st_cur==BP_FIRST ? burst_addr_inc+aligned_addr : st_cur==BP_BURST ? burst_addr_inc+burst_addr : 'x; 
 assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? aligned_addr : st_cur==BP_BURST ? burst_addr : 'x);
+assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
 assign aligned_addr     = start_addr_mask & start_addr;
+assign burst_last = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
+
 always_comb begin
     start_addr_mask = ('1)<<($clog2(AXI_BYTES));
 	for(int i=0;i<=($clog2(AXI_BYTES));i++) begin
@@ -292,10 +241,11 @@ always_comb begin
 		end
 	end
 end
-//------------------------------------
-//------ STATE MACHINES CONTROL ------
-//------------------------------------
-assign burst_last = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
+
+// others
+assign trsize_err       = (usr_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_wsize_error;
+assign usr_bresp        = { trsize_err, 1'b0 };
+
 always_ff @(posedge clk or negedge rst_n) begin 
     if(!rst_n) 
         st_cur <= BP_IDLE; 
@@ -327,21 +277,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         burst_addr <= !wff_rempty ? burst_addr_nxt_b[0 +: AXI_AW] : burst_addr;
     end
 end
-//------------------------------------
-//------ AW FIFO Q SIGNALS LATCH -----
-//------------------------------------
-always_ff @(posedge clk) begin
-    if(aff_re) begin
-        aq_id_latch     <= aq_id   ;
-        aq_addr_latch   <= aq_addr ;
-        aq_len_latch    <= aq_len  ;
-        aq_size_latch   <= aq_size ;
-        aq_burst_latch  <= aq_burst;
-    end
-end
-//------------------------------------
-//------ AW CHANNEL BUFFER -----------
-//------------------------------------
+
 afifo #(
     .AW ( AFF_AW ),
     .DW ( AFF_DW )
@@ -355,13 +291,12 @@ afifo #(
     .wfull    ( aff_wfull    ),
     .wafull   (              ),
     .rempty   ( aff_rempty   ),
-    .wcnt     (              ),
+    .wcnt     ( aff_wcnt     ),
+    .rcnt     ( aff_rcnt     ),
     .d        ( aff_d        ),
     .q        ( aff_q        )
 );
-//------------------------------------
-//------ W CHANNEL BUFFER ------------
-//------------------------------------
+
 afifo #(
     .AW ( WFF_AW ),
     .DW ( WFF_DW )
@@ -375,13 +310,12 @@ afifo #(
     .wfull    ( wff_wfull    ),
     .wafull   (              ),
     .rempty   ( wff_rempty   ),
-    .wcnt     (              ),
+    .wcnt     ( wff_wcnt     ),
+    .rcnt     ( wff_rcnt     ),
     .d        ( wff_d        ),
     .q        ( wff_q        )
 );
-//------------------------------------
-//------ B CHANNEL BUFFER ------------
-//------------------------------------
+
 afifo #(
     .AW ( BFF_AW ),
     .DW ( BFF_DW )
@@ -395,9 +329,20 @@ afifo #(
     .wfull    ( bff_wfull    ),
     .wafull   (              ),
     .rempty   ( bff_rempty   ),
-    .wcnt     (              ),
+    .wcnt     ( bff_wcnt     ),
+    .rcnt     ( bff_rcnt     ),
     .d        ( bff_d        ),
     .q        ( bff_q        )
 );
+
+always_ff @(posedge clk) begin
+    if(aff_re) begin
+        aq_id_latch     <= aq_id   ;
+        aq_addr_latch   <= aq_addr ;
+        aq_len_latch    <= aq_len  ;
+        aq_size_latch   <= aq_size ;
+        aq_burst_latch  <= aq_burst;
+    end
+end
 endmodule
 
