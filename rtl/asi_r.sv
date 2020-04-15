@@ -28,42 +28,42 @@ module asi_r
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
     AXI_BYTESW = $clog2(AXI_BYTES+1)   
 )(
-    //---- AXI GLOBAL SIGNALS ---------------------
-    input  logic                    ACLK          ,
-    input  logic                    ARESETn       ,
-    //---- READ ADDRESS CHANNEL -------------------
-    input  logic [AXI_IW-1     : 0] ARID          ,
-    input  logic [AXI_AW-1     : 0] ARADDR        ,
-    input  logic [AXI_LW-1     : 0] ARLEN         ,
-    input  logic [AXI_SW-1     : 0] ARSIZE        ,
-    input  logic [AXI_BURSTW-1 : 0] ARBURST       ,
-    input  logic                    ARVALID       ,
-    output logic                    ARREADY       ,
-    //---- READ DATA CHANNEL ----------------------
-    output logic [AXI_IW-1     : 0] RID           ,
-    output logic [AXI_DW-1     : 0] RDATA         ,
-    output logic [AXI_RRESPW-1 : 0] RRESP         ,
-    output logic                    RLAST         ,
-    output logic                    RVALID        ,
-    input  logic                    RREADY        ,
-    //---- USER LOGIC SIGNALS ---------------------
-    input  logic                    RAM_CLK       ,
-    input  logic                    RAM_RESETn    ,
+    //---- AXI GLOBAL SIGNALS -----------------------
+    input  logic                    ACLK            ,
+    input  logic                    ARESETn         ,
+    //---- READ ADDRESS CHANNEL ---------------------
+    input  logic [AXI_IW-1     : 0] ARID            ,
+    input  logic [AXI_AW-1     : 0] ARADDR          ,
+    input  logic [AXI_LW-1     : 0] ARLEN           ,
+    input  logic [AXI_SW-1     : 0] ARSIZE          ,
+    input  logic [AXI_BURSTW-1 : 0] ARBURST         ,
+    input  logic                    ARVALID         ,
+    output logic                    ARREADY         ,
+    //---- READ DATA CHANNEL ------------------------
+    output logic [AXI_IW-1     : 0] RID             ,
+    output logic [AXI_DW-1     : 0] RDATA           ,
+    output logic [AXI_RRESPW-1 : 0] RRESP           ,
+    output logic                    RLAST           ,
+    output logic                    RVALID          ,
+    input  logic                    RREADY          ,
+    //---- USER LOGIC SIGNALS -----------------------
+    input  logic                    usr_clk         ,
+    input  logic                    usr_reset_n     ,
     //AR CHANNEL
-    output logic [AXI_IW-1     : 0] m_rid         ,
-    output logic [AXI_LW-1     : 0] m_rlen        ,
-    output logic [AXI_SW-1     : 0] m_rsize       ,
-    output logic [AXI_BURSTW-1 : 0] m_rburst      ,
+    output logic [AXI_IW-1     : 0] usr_rid         ,
+    output logic [AXI_LW-1     : 0] usr_rlen        ,
+    output logic [AXI_SW-1     : 0] usr_rsize       ,
+    output logic [AXI_BURSTW-1 : 0] usr_rburst      ,
     //R CHANNEL
-    output logic [AXI_AW-1     : 0] m_raddr       ,
-    output logic                    m_re          ,
-    output logic                    m_rlast       ,
-    input  logic [AXI_DW-1     : 0] m_rdata       ,
+    output logic [AXI_AW-1     : 0] usr_raddr       ,
+    output logic                    usr_re          ,
+    output logic                    usr_rlast       ,
+    input  logic [AXI_DW-1     : 0] usr_rdata       ,
     //ARBITER SIGNALS
-    output logic                    m_arff_rvalid ,
-    input  logic                    m_rgranted    ,
+    output logic                    usr_rrequest    , // arbiter read request
+    input  logic                    usr_rgrant      , // arbiter read grant
     //ERROR FLAGS
-    input  logic                    m_rsize_error   // unsupported transfer size
+    input  logic                    usr_rsize_error   // unsupported transfer size
 );
 
 timeunit 1ns;
@@ -89,13 +89,14 @@ localparam [AXI_BURSTW-1 : 0] BT_RESERVED  = AXI_BURSTW'(3);
 // BP_IDLE : do nothing
 typedef enum logic [1:0] { BP_FIRST=2'b00, BP_BURST, BP_IDLE } RBURST_PHASE; 
 //------ TOP PORTS ------------------------
-logic                    m_rvalid         ;
+logic                    usr_rvalid       ;
 //-----------------------------------------
 //------ EASY SIGNALS ---------------------
 //-----------------------------------------
 wire                     clk              ;
 wire                     rst_n            ;
 wire                     aff_rvalid       ;
+wire                     aff_rready       ;
 //-----------------------------------------
 //------ AR CHANNEL FIFO SIGNALS ----------
 //-----------------------------------------
@@ -164,9 +165,9 @@ logic [AXI_AW-1     : 0] aligned_addr     ;
 //-----------------------------------------
 //------ R FIFO D SIGNALS -----------------
 //-----------------------------------------
-logic [AXI_RRESPW-1 : 0] m_rresp_ws       ;
+logic [AXI_RRESPW-1 : 0] usr_rresp_ws     ;
 logic                    burst_last_ws    ;
-logic [AXI_IW-1     : 0] m_rid_ws         ;
+logic [AXI_IW-1     : 0] usr_rid_ws       ;
 //-----------------------------------------
 //------ TRANSFER SIZE ERROR --------------
 //-----------------------------------------
@@ -174,7 +175,7 @@ logic                    trsize_err       ;
 //-----------------------------------------
 //------ READ RESPONSE VALUE --------------
 //-----------------------------------------
-logic [AXI_RRESPW-1 : 0] m_rresp          ;
+logic [AXI_RRESPW-1 : 0] usr_rresp        ;
 //-----------------------------------------
 //------ STATE MACHINE VARIABLES ----------
 //-----------------------------------------
@@ -185,23 +186,23 @@ RBURST_PHASE             st_nxt          ;
 //------ WS(Wait States) control
 generate 
     if(SLV_WS==0) begin: WS0
-        assign m_rvalid    = m_re;
+        assign usr_rvalid  = usr_re;
         assign rff_wafull2 = rff_wcnt >= RDATA_DEPTH;
     end: WS0
     else begin: WS_N
-        logic [SLV_WS : 0] m_re_ff     ;
+        logic [SLV_WS : 0] usr_re_ff   ;
         logic [RFF_AW : 0] rff_wcnt_af ; // rff wcnt almost full
-        assign m_rvalid    = m_re_ff[SLV_WS-1];
+        assign usr_rvalid  = usr_re_ff[SLV_WS-1];
         assign rff_wafull2 = rff_wcnt_af >= RDATA_DEPTH;
-        always_ff @(posedge RAM_CLK or negedge RAM_RESETn)
-            if(!RAM_RESETn)
-                m_re_ff <= '0;
+        always_ff @(posedge usr_clk or negedge usr_reset_n)
+            if(!usr_reset_n)
+                usr_re_ff <= '0;
             else
-                m_re_ff <= {m_re_ff[SLV_WS-1:0], m_re};
+                usr_re_ff <= {usr_re_ff[SLV_WS-1:0], usr_re};
         always_comb begin
             rff_wcnt_af = rff_wcnt;
             for(int k=0;k<SLV_WS;k++) begin
-                rff_wcnt_af = rff_wcnt_af+m_re_ff[k];
+                rff_wcnt_af = rff_wcnt_af+usr_re_ff[k];
             end
         end
     end: WS_N
@@ -219,55 +220,56 @@ assign RRESP            = rq_resp          ;
 assign RLAST            = rq_last          ;
 assign RVALID           = ~rff_rempty      ;
 //-- USER LOGIC
-assign m_rid            = st_cur==BP_FIRST ? aq_id    : aq_id_latch;
-assign m_rlen           = st_cur==BP_FIRST ? aq_len   : aq_len_latch;
-assign m_rsize          = st_cur==BP_FIRST ? aq_size  : aq_size_latch;
-assign m_rburst         = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
-assign m_raddr          = st_cur==BP_FIRST ? start_addr : burst_addr;
-assign m_re             = aff_re || st_cur==BP_BURST && (!rff_wafull2);
-assign m_rlast          = burst_last       ;
-assign m_arff_rvalid    = !aff_rempty && !(m_re && aq_len=='0 && st_cur==BP_FIRST);
+assign usr_rid          = st_cur==BP_FIRST ? aq_id    : aq_id_latch;
+assign usr_rlen         = st_cur==BP_FIRST ? aq_len   : aq_len_latch;
+assign usr_rsize        = st_cur==BP_FIRST ? aq_size  : aq_size_latch;
+assign usr_rburst       = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
+assign usr_raddr        = st_cur==BP_FIRST ? start_addr : burst_addr;
+assign usr_re           = aff_re || st_cur==BP_BURST && (!rff_wafull2);
+assign usr_rlast        = burst_last       ;
+assign usr_rrequest     = !aff_rempty && !(usr_re && aq_len=='0 && st_cur==BP_FIRST);
 assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
 //------------------------------------
 //------ EASY ASSIGNMENTS ------------
 //------------------------------------
-assign clk              = RAM_CLK          ;
-assign rst_n            = RAM_RESETn      ;
-assign aff_rvalid       = !aff_rempty && st_cur==BP_FIRST;
+assign clk              = usr_clk          ;
+assign rst_n            = usr_reset_n      ;
+assign aff_rvalid       = !aff_rempty      ; 
+assign aff_rready       = st_cur==BP_FIRST && ~rff_wafull2 & usr_rgrant;
 //------------------------------------
 //------ AR CHANNEL FIFO ASSIGN ------
 //------------------------------------
 assign aff_wreset_n     = ARESETn          ;
-assign aff_rreset_n     = RAM_RESETn      ;
+assign aff_rreset_n     = usr_reset_n      ;
 assign aff_wclk         = ACLK             ;
-assign aff_rclk         = RAM_CLK          ;
+assign aff_rclk         = usr_clk          ;
 assign aff_we           = ARVALID & ARREADY;
-assign aff_re           = aff_rvalid & (!rff_wafull2) & m_rgranted;
+assign aff_re           = aff_rvalid & aff_rready;
 assign aff_d            = { ARID, ARADDR, ARLEN, ARSIZE, ARBURST };
 assign { aq_id, aq_addr, aq_len, aq_size, aq_burst } = aff_q;
 //------------------------------------
 //------ R CHANNEL FIFO ASSIGN -------
 //------------------------------------
-assign rff_wreset_n     = RAM_RESETn      ;
+assign rff_wreset_n     = usr_reset_n      ;
 assign rff_rreset_n     = ARESETn          ;
-assign rff_wclk         = RAM_CLK          ;
+assign rff_wclk         = usr_clk          ;
 assign rff_rclk         = ACLK             ;
-assign rff_we           = m_rvalid         ;
+assign rff_we           = usr_rvalid       ;
 assign rff_re           = RVALID & RREADY  ;
-assign rff_d            = { m_rid_ws, m_rdata, m_rresp_ws, burst_last_ws }; 
+assign rff_d            = { usr_rid_ws, usr_rdata, usr_rresp_ws, burst_last_ws }; 
 assign { rq_id, rq_data, rq_resp, rq_last } = rff_q;
 //------------------------------------
 //------ TRANSFER SIZE ERROR ---------
 //------------------------------------
-assign trsize_err       = (m_rsize > (AXI_SW'($clog2(AXI_BYTES)))) | m_rsize_error;
+assign trsize_err       = (usr_rsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_rsize_error;
 //------------------------------------
 //------ READ RESPONSE VALUE ---------
 //------------------------------------
-assign m_rresp          = { trsize_err, 1'b0 };
+assign usr_rresp        = { trsize_err, 1'b0 };
 //------------------------------------
 //------ ADDRESS CALCULATION ---------
 //------------------------------------
-assign burst_addr_inc   = m_rburst==BT_FIXED ? '0 : (AXI_BYTESW'(1))<<m_rsize;
+assign burst_addr_inc   = usr_rburst==BT_FIXED ? '0 : (AXI_BYTESW'(1))<<usr_rsize;
 assign burst_addr_nxt   = st_cur==BP_FIRST ? (burst_addr_inc+aligned_addr) : (st_cur==BP_BURST ? (!rff_wafull2 ? burst_addr_inc+burst_addr : burst_addr) : 'x);
 assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? aligned_addr : st_cur==BP_BURST ? burst_addr : 'x);
 assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
@@ -275,7 +277,7 @@ assign aligned_addr     = start_addr_mask & start_addr;
 always_comb begin
     start_addr_mask = ('1)<<($clog2(AXI_BYTES)); // default align with AXI_DATA_BUS_BYTES
 	for(int i=0;i<=($clog2(AXI_BYTES));i++) begin
-		if(i==m_rsize) begin
+		if(i==usr_rsize) begin
             start_addr_mask = ('1)<<i;
 		end
 	end
@@ -283,7 +285,7 @@ end
 //------------------------------------
 //------ STATE MACHINES CONTROL ------
 //------------------------------------
-assign burst_last = (m_re && aq_len=='0 && st_cur==BP_FIRST) || (burst_cc==aq_len_latch && (!rff_wafull2) && st_cur==BP_BURST);
+assign burst_last = (usr_re && aq_len=='0 && st_cur==BP_FIRST) || (burst_cc==aq_len_latch && (!rff_wafull2) && st_cur==BP_BURST);
 always_ff @(posedge clk or negedge rst_n) begin 
     if(!rst_n) 
         st_cur <= BP_IDLE; 
@@ -316,23 +318,23 @@ end
 //------------------------------------
 generate 
     if(SLV_WS==0) begin: INFO_WS0
-        assign m_rresp_ws    = m_rresp   ;
+        assign usr_rresp_ws  = usr_rresp ;
         assign burst_last_ws = burst_last;
-        assign m_rid_ws      = m_rid     ;
+        assign usr_rid_ws    = usr_rid   ;
     end: INFO_WS0
     else if(SLV_WS==1) begin: INFO_WS1
         always_ff @(posedge clk)
-            {m_rresp_ws, burst_last_ws, m_rid_ws} <= {m_rresp, burst_last, m_rid};
+            {usr_rresp_ws, burst_last_ws, usr_rid_ws} <= {usr_rresp, burst_last, usr_rid};
     end: INFO_WS1
     else begin: INFO_WSN
-        wire  [AXI_RRESPW+1+AXI_IW-1 : 0] rfd_sigs = {m_rresp, burst_last, m_rid};
+        wire  [AXI_RRESPW+1+AXI_IW-1 : 0] rfd_sigs = {usr_rresp, burst_last, usr_rid};
         logic [AXI_RRESPW+1+AXI_IW-1 : 0] rfd_sigs_ff[SLV_WS] ;
         always_ff @(posedge clk) begin
             rfd_sigs_ff[0] <= rfd_sigs;
             for(int i=1;i<SLV_WS;i++) 
                 rfd_sigs_ff[i] <= rfd_sigs_ff[i-1];
         end
-        assign {m_rresp_ws, burst_last_ws, m_rid_ws} = rfd_sigs_ff[SLV_WS-1];
+        assign {usr_rresp_ws, burst_last_ws, usr_rid_ws} = rfd_sigs_ff[SLV_WS-1];
     end: INFO_WSN
 endgenerate
 //------------------------------------

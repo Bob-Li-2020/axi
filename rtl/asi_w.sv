@@ -28,47 +28,47 @@ module asi_w
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
     AXI_BYTESW = $clog2(AXI_BYTES+1)   
 )(
-    //---- AXI GLOBAL SIGNALS ---------------------
-    input  logic                    ACLK          ,
-    input  logic                    ARESETn       ,
-    //---- AXI ADDRESS WRITE SIGNALS --------------
-    input  logic [AXI_IW-1     : 0] AWID          ,
-    input  logic [AXI_AW-1     : 0] AWADDR        ,
-    input  logic [AXI_LW-1     : 0] AWLEN         ,
-    input  logic [AXI_SW-1     : 0] AWSIZE        ,
-    input  logic [AXI_BURSTW-1 : 0] AWBURST       ,
-    input  logic                    AWVALID       ,
-    output logic                    AWREADY       ,
-    //---- AXI DATA WRITE SIGNALS -----------------
-    input  logic [AXI_DW-1     : 0] WDATA         ,
-    input  logic [AXI_WSTRBW-1 : 0] WSTRB         ,
-    input  logic                    WLAST         ,
-    input  logic                    WVALID        ,
-    output logic                    WREADY        ,
-    //---- AXI WRITE RESPONSE SIGNALS -------------
-    output logic [AXI_IW-1     : 0] BID           ,
-    output logic [AXI_BRESPW-1 : 0] BRESP         ,
-    output logic                    BVALID        ,
-    input  logic                    BREADY        ,
-    //---- USER LOGIC SIGNALS ---------------------
-    input  logic                    RAM_CLK       ,
-    input  logic                    RAM_RESETn    ,
+    //---- AXI GLOBAL SIGNALS -----------------------
+    input  logic                    ACLK            ,
+    input  logic                    ARESETn         ,
+    //---- AXI ADDRESS WRITE SIGNALS ----------------
+    input  logic [AXI_IW-1     : 0] AWID            ,
+    input  logic [AXI_AW-1     : 0] AWADDR          ,
+    input  logic [AXI_LW-1     : 0] AWLEN           ,
+    input  logic [AXI_SW-1     : 0] AWSIZE          ,
+    input  logic [AXI_BURSTW-1 : 0] AWBURST         ,
+    input  logic                    AWVALID         ,
+    output logic                    AWREADY         ,
+    //---- AXI DATA WRITE SIGNALS -------------------
+    input  logic [AXI_DW-1     : 0] WDATA           ,
+    input  logic [AXI_WSTRBW-1 : 0] WSTRB           ,
+    input  logic                    WLAST           ,
+    input  logic                    WVALID          ,
+    output logic                    WREADY          ,
+    //---- AXI WRITE RESPONSE SIGNALS ---------------
+    output logic [AXI_IW-1     : 0] BID             ,
+    output logic [AXI_BRESPW-1 : 0] BRESP           ,
+    output logic                    BVALID          ,
+    input  logic                    BREADY          ,
+    //---- USER LOGIC SIGNALS -----------------------
+    input  logic                    usr_clk         ,
+    input  logic                    usr_reset_n     ,
     //AW CHANNEL
-    output logic [AXI_IW-1     : 0] m_wid         ,
-    output logic [AXI_LW-1     : 0] m_wlen        ,
-    output logic [AXI_SW-1     : 0] m_wsize       ,
-    output logic [AXI_BURSTW-1 : 0] m_wburst      ,
+    output logic [AXI_IW-1     : 0] usr_wid         ,
+    output logic [AXI_LW-1     : 0] usr_wlen        ,
+    output logic [AXI_SW-1     : 0] usr_wsize       ,
+    output logic [AXI_BURSTW-1 : 0] usr_wburst      ,
     //W CHANNEL
-    output logic [AXI_AW-1     : 0] m_waddr       ,
-    output logic [AXI_DW-1     : 0] m_wdata       ,
-    output logic [AXI_WSTRBW-1 : 0] m_wstrb       ,
-    output logic                    m_wlast       ,
-    output logic                    m_we          ,
+    output logic [AXI_AW-1     : 0] usr_waddr       ,
+    output logic [AXI_DW-1     : 0] usr_wdata       ,
+    output logic [AXI_WSTRBW-1 : 0] usr_wstrb       ,
+    output logic                    usr_wlast       ,
+    output logic                    usr_we          ,
     //ARBITER SIGNALS
-    output logic                    m_awff_rvalid ,
-    input  logic                    m_wgranted    ,
+    output logic                    usr_wrequest    , // arbiter write request
+    input  logic                    usr_wgrant      , // arbiter write grant
     //ERROR FLAGS
-    input  logic                    m_wsize_error   // unsupported transfer size
+    input  logic                    usr_wsize_error   // unsupported transfer size
 );
 timeunit 1ns;
 timeprecision 1ps;
@@ -196,7 +196,7 @@ logic                    trsize_err       ;
 //-----------------------------------------
 //------ WRITE RESPONSE VALUE -------------
 //-----------------------------------------
-logic [AXI_BRESPW-1 : 0] m_bresp          ;
+logic [AXI_BRESPW-1 : 0] usr_bresp        ;
 //-----------------------------------------
 //------ STATE MACHINE VARIABLES ----------
 //-----------------------------------------
@@ -215,22 +215,22 @@ assign BID              = bq_bid             ;
 assign BRESP            = bq_bresp           ;
 assign BVALID           = bff_rvalid         ;
 //-- USER LOGIC
-assign m_wid            = st_cur==BP_FIRST ? aq_id    : aq_id_latch;      
-assign m_wlen           = st_cur==BP_FIRST ? aq_len   : aq_len_latch;    
-assign m_wsize          = st_cur==BP_FIRST ? aq_size  : aq_size_latch;  
-assign m_wburst         = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
-assign m_waddr          = st_cur==BP_FIRST ? start_addr : burst_addr;
-assign m_wdata          = wq_data            ;
-assign m_wstrb          = wff_re ? wq_strb : '0;
-assign m_wlast          = wff_re ? wq_last : '0; 
-assign m_we             = wff_re             ;
-assign m_awff_rvalid    = !aff_rempty && !(wff_re && aq_len=='0 && st_cur==BP_FIRST);
+assign usr_wid          = st_cur==BP_FIRST ? aq_id    : aq_id_latch;      
+assign usr_wlen         = st_cur==BP_FIRST ? aq_len   : aq_len_latch;    
+assign usr_wsize        = st_cur==BP_FIRST ? aq_size  : aq_size_latch;  
+assign usr_wburst       = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
+assign usr_waddr        = st_cur==BP_FIRST ? start_addr : burst_addr;
+assign usr_wdata        = wq_data            ;
+assign usr_wstrb        = wff_re ? wq_strb : '0;
+assign usr_wlast        = wff_re ? wq_last : '0; 
+assign usr_we           = wff_re             ;
+assign usr_wrequest     = !aff_rempty && !(wff_re && aq_len=='0 && st_cur==BP_FIRST);
 assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
 //------------------------------------
 //------ EASY ASSIGNMENTS ------------
 //------------------------------------
-assign clk              = RAM_CLK            ;
-assign rst_n            = RAM_RESETn        ;
+assign clk              = usr_clk            ;
+assign rst_n            = usr_reset_n        ;
 assign aff_rvalid       = !aff_rempty & !wff_rempty && st_cur==BP_FIRST; // awfifo read may only occur in state <BP_FIRST>
 assign wff_rvalid       = !aff_rempty & !wff_rempty && st_cur==BP_FIRST || !wff_rempty && st_cur==BP_BURST; 
 assign bff_rvalid       = !bff_rempty        ;
@@ -238,56 +238,56 @@ assign bff_rvalid       = !bff_rempty        ;
 //------ AW CHANNEL FIFO ASSIGN ------
 //------------------------------------
 assign aff_wreset_n     = ARESETn            ;
-assign aff_rreset_n     = RAM_RESETn        ;
+assign aff_rreset_n     = usr_reset_n        ;
 assign aff_wclk         = ACLK               ;
-assign aff_rclk         = RAM_CLK            ;
+assign aff_rclk         = usr_clk            ;
 assign aff_we           = AWVALID & AWREADY  ;
-assign aff_re           = aff_rvalid & m_wgranted; 
+assign aff_re           = aff_rvalid & usr_wgrant; 
 assign aff_d            = { AWID, AWADDR, AWLEN, AWSIZE, AWBURST };
 assign { aq_id, aq_addr, aq_len, aq_size, aq_burst } = aff_q;
 //------------------------------------
 //------ W CHANNEL FIFO ASSIGN -------
 //------------------------------------
 assign wff_wreset_n     = ARESETn            ;
-assign wff_rreset_n     = RAM_RESETn        ;
+assign wff_rreset_n     = usr_reset_n        ;
 assign wff_wclk         = ACLK               ;
-assign wff_rclk         = RAM_CLK            ;
+assign wff_rclk         = usr_clk            ;
 assign wff_we           = WVALID & WREADY    ;
-assign wff_re           = wff_rvalid & m_wgranted;
+assign wff_re           = wff_rvalid & usr_wgrant;
 assign wff_d            = { WDATA, WSTRB, WLAST };
 assign { wq_data, wq_strb, wq_last } = wff_q ;
 //------------------------------------
 //------ B CHANNEL FIFO ASSIGN -------
 //------------------------------------
-assign bff_wreset_n     = RAM_RESETn        ;
+assign bff_wreset_n     = usr_reset_n        ;
 assign bff_rreset_n     = ARESETn            ;
-assign bff_wclk         = RAM_CLK            ;
+assign bff_wclk         = usr_clk            ;
 assign bff_rclk         = ACLK               ;
 assign bff_we           = !bff_wfull && (burst_last || st_cur==BP_BRESP);
 assign bff_re           = bff_rvalid & BREADY;
-assign bff_d            = {m_wid, m_bresp}   ;
+assign bff_d            = {usr_wid, usr_bresp};
 assign { bq_bid, bq_bresp } = bff_q          ;
 //------------------------------------
 //------ TRANSFER SIZE ASSIGN --------
 //------------------------------------
-assign trsize_err       = (m_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | m_wsize_error;
+assign trsize_err       = (usr_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_wsize_error;
 //------------------------------------
 //------ WRITE RESPONSE VALUE --------
 //------------------------------------
-assign m_bresp          = { trsize_err, 1'b0 };
+assign usr_bresp        = { trsize_err, 1'b0 };
 //------------------------------------
 //------ ADDRESS CALCULATION ---------
 //------------------------------------
 // ! DOES NOT SUPPORT WRAP ! ! DOES NOT ACCEPT 'BT_RESERVED' BURST TYPE !
 assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
-assign burst_addr_inc   = m_wburst==BT_FIXED ? '0 : (AXI_BYTESW'(1))<<m_wsize;
+assign burst_addr_inc   = usr_wburst==BT_FIXED ? '0 : (AXI_BYTESW'(1))<<usr_wsize;
 assign burst_addr_nxt   = st_cur==BP_FIRST ? burst_addr_inc+aligned_addr : st_cur==BP_BURST ? burst_addr_inc+burst_addr : 'x; 
 assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? aligned_addr : st_cur==BP_BURST ? burst_addr : 'x);
 assign aligned_addr     = start_addr_mask & start_addr;
 always_comb begin
     start_addr_mask = ('1)<<($clog2(AXI_BYTES));
 	for(int i=0;i<=($clog2(AXI_BYTES));i++) begin
-		if(i==m_wsize) begin
+		if(i==usr_wsize) begin
             start_addr_mask = ('1)<<i;
 		end
 	end

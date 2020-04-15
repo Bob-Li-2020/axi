@@ -107,82 +107,56 @@ module asi
 timeunit 1ns;
 timeprecision 1ps;
 
-typedef enum logic [1:0] { ARB_IDLE=2'b00, ARB_READ, ARB_WRITE } TYPE_ARB;
-typedef enum logic { RGNT=1'b0, WGNT } TYPE_GNT;
+enum logic [1:0] { ARB_IDLE=2'b00, ARB_READ, ARB_WRITE } st_cur, st_nxt; // arbiter state machine
 
-//--------------------------------------
-//------ r_inf/w_inf SIGNALS -----------
-//--------------------------------------
-logic [AXI_AW-1     : 0] m_addr        ;
-logic [AXI_DW-1     : 0] m_wdata       ;
-logic [AXI_WSTRBW-1 : 0] m_wstrb       ;
-logic                    m_we          ;
-logic [AXI_DW-1     : 0] m_rdata       ;
-logic                    m_re          ; // asi read request("m_raddr" valid)
-//--------------------------------------
-//------ EASY SIGNALS ------------------
-//--------------------------------------
-logic                    rlast         ;
-logic                    wlast         ;
-logic                    arff_v        ;
-logic                    awff_v        ;
-//--------------------------------------
-//------ asi SIGNALS -------------------
-//--------------------------------------
-//ARBITER SIGNALS
-logic                    m_arff_rvalid ; // (AR FIFO NOT EMPTY) && (BP_st_cur==BP_FIRST)
-logic                    m_awff_rvalid ; // (AW FIFO NOT EMPTY) && (BP_st_cur==BP_FIRST)
-logic                    m_rgranted    ;
-logic                    m_wgranted    ;
-//ERROR FLAGS
-logic                    m_wsize_error ; // unsupported transfer size
-logic                    m_rsize_error ; // unsupported transfer size
+//---- USER LOGIC SIGNALS ----------------
+logic                    usr_clk         ; // input
+logic                    usr_reset_n     ; // input
 //AW CHANNEL
-logic [AXI_IW-1     : 0] m_wid         ;
-logic [AXI_LW-1     : 0] m_wlen        ;
-logic [AXI_SW-1     : 0] m_wsize       ;
-logic [AXI_BURSTW-1 : 0] m_wburst      ;
+logic [AXI_IW-1     : 0] usr_wid         ; // output 
+logic [AXI_LW-1     : 0] usr_wlen        ; // output 
+logic [AXI_SW-1     : 0] usr_wsize       ; // output 
+logic [AXI_BURSTW-1 : 0] usr_wburst      ; // output 
 //W CHANNEL
-logic                    m_wlast       ;
+logic [AXI_AW-1     : 0] usr_waddr       ; // output 
+logic [AXI_DW-1     : 0] usr_wdata       ; // output 
+logic [AXI_WSTRBW-1 : 0] usr_wstrb       ; // output 
+logic                    usr_wlast       ; // output 
+logic                    usr_we          ; // output 
+//ARBITER SIGNALS
+logic                    usr_wrequest    ; // output. arbiter write request
+logic                    usr_wgrant      ; // input.  arbiter write grant
+//ERROR FLAGS
+logic                    usr_wsize_error ; // input. unsupported transfer size
 //AR CHANNEL
-logic [AXI_IW-1     : 0] m_rid         ;
-logic [AXI_LW-1     : 0] m_rlen        ;
-logic [AXI_SW-1     : 0] m_rsize       ;
-logic [AXI_BURSTW-1 : 0] m_rburst      ;
+logic [AXI_IW-1     : 0] usr_rid         ; // output  
+logic [AXI_LW-1     : 0] usr_rlen        ; // output 
+logic [AXI_SW-1     : 0] usr_rsize       ; // output 
+logic [AXI_BURSTW-1 : 0] usr_rburst      ; // output 
 //R CHANNEL
-logic                    m_rlast       ; // asi read request last cycle
-//ADDRESSES
-logic [AXI_AW-1     : 0] m_waddr       ;
-logic [AXI_AW-1     : 0] m_raddr       ;
-//--------------------------------------
-//------ ARBITER STATE MACHINE ---------
-//--------------------------------------
-TYPE_ARB st_cur;
-TYPE_ARB st_nxt;
-//------------------------------------
-//---- TOP PORTS ASSIGN --------------
-//------------------------------------
-assign RAM_A         = m_addr           ; // address
-assign RAM_CEN       = ~(m_we | m_re)   ; // clock enable
-assign RAM_D         = m_wdata          ; // data
-assign RAM_WEN       = ~(m_wstrb & {AXI_WSTRBW{m_we}}); // write enable
-assign m_rdata       = RAM_Q            ; // Q
+logic [AXI_AW-1     : 0] usr_raddr       ; // output  
+logic                    usr_re          ; // output 
+logic                    usr_rlast       ; // output 
+logic [AXI_DW-1     : 0] usr_rdata       ; // input  
+//ARBITER SIGNALS
+logic                    usr_rrequest    ; // output. arbiter read request
+logic                    usr_rgrant      ; // input.  arbiter read grant
+//ERROR FLAGS
+logic                    usr_rsize_error ; // input. unsupported transfer size
 
-assign m_wsize_error = 1'b0             ;
-assign m_rsize_error = 1'b0             ;
-//------------------------------------
-//------ EASY SIGNALS ASSIGN ---------
-//------------------------------------
-assign rlast         = m_rlast          ;
-assign wlast         = m_wlast          ;
-assign arff_v        = m_arff_rvalid    ;
-assign awff_v        = m_awff_rvalid    ;
-//------------------------------------
-//------ ARBITER STATE MACHINE -------
-//------------------------------------
-assign m_addr        = m_we ? m_waddr : m_raddr;
-assign m_rgranted    = st_cur==ARB_READ ; 
-assign m_wgranted    = st_cur==ARB_WRITE;
+//---- TOP PORTS ASSIGN ------------------
+assign RAM_A           = usr_we ? usr_waddr : usr_raddr; // address
+assign RAM_CEN         = ~(usr_we | usr_re); // clock enable
+assign RAM_D           = usr_wdata         ; // write data
+assign RAM_WEN         = ~(usr_wstrb & {AXI_WSTRBW{usr_we}}); // write enable
+
+assign usr_clk         = RAM_CLK           ;
+assign usr_reset_n     = RAM_RESETn        ;
+assign usr_wgrant      = st_cur==ARB_WRITE ;
+assign usr_wsize_error = 1'b0              ;
+assign usr_rdata       = RAM_Q             ;
+assign usr_rgrant      = st_cur==ARB_READ  ; 
+assign usr_rsize_error = 1'b0              ;
 
 always_ff @(posedge RAM_CLK or negedge RAM_RESETn) begin
     if(!RAM_RESETn) begin
@@ -197,20 +171,17 @@ always_comb begin
     case(st_cur)
         ARB_IDLE: begin
             st_nxt = st_cur;
-            if(arff_v & (!awff_v || ASI_ARB!=0))
+            if(usr_rrequest & (!usr_wrequest || ASI_ARB!=0))
                 st_nxt = ARB_READ;
-            if(awff_v & (!arff_v || ASI_ARB==0))
+            if(usr_wrequest & (!usr_rrequest || ASI_ARB==0))
                 st_nxt = ARB_WRITE;
         end
-        ARB_READ : st_nxt = rlast & (awff_v | ~arff_v) ? (awff_v ? ARB_WRITE : ARB_IDLE) : st_cur;
-        ARB_WRITE: st_nxt = wlast & (arff_v | ~awff_v) ? (arff_v ? ARB_READ  : ARB_IDLE) : st_cur;
+        ARB_READ : st_nxt = usr_rlast & (usr_wrequest | ~usr_rrequest) ? (usr_wrequest ? ARB_WRITE : ARB_IDLE) : st_cur;
+        ARB_WRITE: st_nxt = usr_wlast & (usr_rrequest | ~usr_wrequest) ? (usr_rrequest ? ARB_READ  : ARB_IDLE) : st_cur;
         default: st_nxt = ARB_IDLE;
     endcase
 end
 
-//------------------------------------
-//------ asi_w/r INSTANCES -----------
-//------------------------------------
 asi_w #(
 //--------- AXI PARAMETERS -------
 .AXI_DW     ( AXI_DW     ),
