@@ -7,10 +7,10 @@
 //----------------------                         2) INDEPENDENT AW CHANNEL / AR CHANNEL; 
 //----------------------                         3) NARROW/UNALIGNED TRANSFERS; 
 //----------------------                         4) WRITE BYTE STROBES;
+//----------------------                         5) 4KB boundary error response;
 //----------------------                         *) SPRAM READ/WRITE ARBITER.
 //----------------------NOT SUPPORTED FEATURES: 
 //----------------------                         1) READ DATA RE-ORDERING;
-//----------------------                         2) INTERLEAVED WRITE TRANSFERS.
 //----------------------BRESP:
 //----------------------        2'b00: OKAY;
 //----------------------        2'b01: EXOKAY. NOT supported;

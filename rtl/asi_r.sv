@@ -2,7 +2,6 @@
 //-- DATE: 2019.12
 //-- DESCRIPTION: AXI SLAVE INTERFACE.READ. BASED ON AXI4 SPEC.
 
-
 // asi_r: Axi Slave Interface Read
 module asi_r 
 #(
@@ -90,7 +89,6 @@ wire                     clk              ;
 wire                     rst_n            ;
 wire                     aff_rvalid       ;
 wire                     aff_rready       ;
-wire                     error_w4KB       ;
 
 //------ ar fifo signals ------------------
 logic                    aff_wreset_n     ;
@@ -153,8 +151,9 @@ logic [AXI_RRESPW-1 : 0] usr_rresp_ws     ;
 logic [AXI_IW-1     : 0] usr_rid_ws       ;
 
 //------ other signals --------------------
-logic                    trsize_err       ;
-logic [AXI_RRESPW-1 : 0] usr_rresp        ;
+logic                    error_size       ;
+wire                     error_w4KB       ;
+logic [AXI_RRESPW-1 : 0] usr_rresp        ; // along with <usr_re>
 
 // output
 assign ARREADY          = ~aff_wfull       ;
@@ -177,7 +176,7 @@ assign clk              = usr_clk          ;
 assign rst_n            = usr_reset_n      ;
 assign aff_rvalid       = !aff_rempty      ; 
 assign aff_rready       = st_cur==BP_FIRST && ~rff_wafull2 & usr_rgrant;
-assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
+assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST && !burst_last;
 
 // ar fifo
 assign aff_wreset_n     = ARESETn          ;
@@ -210,7 +209,7 @@ assign burst_last       = (aff_re && aq_len=='0) || (st_cur==BP_BURST && !rff_wa
 //------- wait states control -------------
 generate 
     if(SLV_WS==0) begin: WS0
-        assign usr_rvalid  = usr_re;
+        assign usr_rvalid  = usr_re            ;
         assign rff_wafull2 = rff_wcnt >= ASI_RD;
     end: WS0
     else begin: WS_N
@@ -233,8 +232,8 @@ generate
 endgenerate
 
 // others
-assign trsize_err       = (usr_rsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_rsize_error;
-assign usr_rresp        = { trsize_err, 1'b0 };
+assign error_size = (usr_rsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_rsize_error;
+assign usr_rresp  = { error_size | error_w4KB, 1'b0 };
 
 always_comb begin
     start_addr_mask = ('1)<<($clog2(AXI_BYTES)); // default align with AXI_DATA_BUS_BYTES
@@ -339,13 +338,12 @@ afifo #(
 
 always_ff @(posedge clk) begin
     if(aff_re) begin
-        aq_id_latch    <= aq_id;
-        aq_addr_latch  <= aq_addr;
-        aq_len_latch   <= aq_len;
-        aq_size_latch  <= aq_size;
+        aq_id_latch    <= aq_id   ;
+        aq_addr_latch  <= aq_addr ;
+        aq_len_latch   <= aq_len  ;
+        aq_size_latch  <= aq_size ;
         aq_burst_latch <= aq_burst;
     end
 end
-
 endmodule
 

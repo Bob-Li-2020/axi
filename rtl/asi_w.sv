@@ -1,7 +1,6 @@
 //-- AUTHOR: LIBING
 //-- DATE: 2019.12
 //-- DESCRIPTION: AXI SLAVE INTERFACE.WRITE. BASED ON AXI4 SPEC.
-// ! NO SUPPORT WRAP ! ! NO ACCEPT 'BT_RESERVED' BURST TYPE !
 
 // asi_w: Axi Slave Interface Write
 module asi_w 
@@ -166,8 +165,10 @@ logic                    burst_last       ;
 logic [AXI_AW-1     : 0] start_addr       ;
 logic [AXI_AW-1     : 0] start_addr_mask  ;
 logic [AXI_AW-1     : 0] aligned_addr     ;
+
+//------ other signals --------------------
+logic                    error_size       ;
 logic                    error_w4KB       ;
-logic                    trsize_err       ;
 logic [AXI_BRESPW-1 : 0] usr_bresp        ;
 
 // output
@@ -185,8 +186,8 @@ assign usr_wdata        = wq_data            ;
 assign usr_wstrb        = wff_re ? wq_strb : '0;
 assign usr_wlast        = wff_re ? wq_last : '0; 
 assign usr_we           = wff_re             ;
-assign usr_wrequest     = aff_rcnt-aff_re>0;
-assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
+assign usr_wrequest     = aff_rcnt-aff_re>0  ;
+assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST && !burst_last;
 
 // easy
 assign clk              = usr_clk            ;
@@ -231,7 +232,7 @@ assign burst_addr_nxt   = st_cur==BP_FIRST ? burst_addr_inc+aligned_addr : st_cu
 assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? aligned_addr : st_cur==BP_BURST ? burst_addr : 'x);
 assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
 assign aligned_addr     = start_addr_mask & start_addr;
-assign burst_last = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
+assign burst_last       = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
 
 always_comb begin
     start_addr_mask = ('1)<<($clog2(AXI_BYTES));
@@ -243,8 +244,8 @@ always_comb begin
 end
 
 // others
-assign trsize_err       = (usr_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_wsize_error;
-assign usr_bresp        = { trsize_err, 1'b0 };
+assign error_size = (usr_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_wsize_error;
+assign usr_bresp  = { error_size | error_w4KB, 1'b0 };
 
 always_ff @(posedge clk or negedge rst_n) begin 
     if(!rst_n) 
@@ -337,11 +338,11 @@ afifo #(
 
 always_ff @(posedge clk) begin
     if(aff_re) begin
-        aq_id_latch     <= aq_id   ;
-        aq_addr_latch   <= aq_addr ;
-        aq_len_latch    <= aq_len  ;
-        aq_size_latch   <= aq_size ;
-        aq_burst_latch  <= aq_burst;
+        aq_id_latch    <= aq_id   ;
+        aq_addr_latch  <= aq_addr ;
+        aq_len_latch   <= aq_len  ;
+        aq_size_latch  <= aq_size ;
+        aq_burst_latch <= aq_burst;
     end
 end
 endmodule
