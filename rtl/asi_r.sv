@@ -226,7 +226,7 @@ assign m_rburst         = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
 assign m_raddr          = st_cur==BP_FIRST ? start_addr : burst_addr;
 assign m_re             = aff_re || st_cur==BP_BURST && (!rff_wafull2);
 assign m_rlast          = burst_last       ;
-assign m_arff_rvalid    = !aff_rempty      ;
+assign m_arff_rvalid    = !aff_rempty && !(m_re && aq_len=='0 && st_cur==BP_FIRST);
 assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
 //------------------------------------
 //------ EASY ASSIGNMENTS ------------

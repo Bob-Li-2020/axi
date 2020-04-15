@@ -224,7 +224,7 @@ assign m_wdata          = wq_data            ;
 assign m_wstrb          = wff_re ? wq_strb : '0;
 assign m_wlast          = wff_re ? wq_last : '0; 
 assign m_we             = wff_re             ;
-assign m_awff_rvalid    = !aff_rempty;
+assign m_awff_rvalid    = !aff_rempty && !(wff_re && aq_len=='0 && st_cur==BP_FIRST);
 assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST;
 //------------------------------------
 //------ EASY ASSIGNMENTS ------------
