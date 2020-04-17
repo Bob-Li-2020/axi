@@ -80,10 +80,10 @@ localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW,
            WFF_AW = $clog2(ASI_WD),
            BFF_AW = $clog2(ASI_BD);
 
-localparam [AXI_BURSTW-1 : 0] BT_FIXED     = AXI_BURSTW'(0);
-localparam [AXI_BURSTW-1 : 0] BT_INCR      = AXI_BURSTW'(1);
-localparam [AXI_BURSTW-1 : 0] BT_WRAP      = AXI_BURSTW'(2);
-localparam [AXI_BURSTW-1 : 0] BT_RESERVED  = AXI_BURSTW'(3);
+localparam [AXI_BURSTW-1 : 0] BT_FIXED     = 0;
+localparam [AXI_BURSTW-1 : 0] BT_INCR      = 1;
+localparam [AXI_BURSTW-1 : 0] BT_WRAP      = 2;
+localparam [AXI_BURSTW-1 : 0] BT_RESERVED  = 3;
 
 // BP_FIRST: transfer the first transfer
 // BP_BURST: transfer the rest  transfer(s)
@@ -227,9 +227,9 @@ assign bff_d            = {usr_wid, usr_bresp};
 assign { bq_bid, bq_bresp } = bff_q          ;
 
 // burst
-assign burst_addr_inc   = usr_wburst==BT_FIXED ? '0 : (AXI_BYTESW'(1))<<usr_wsize;
-assign burst_addr_nxt   = st_cur==BP_FIRST ? burst_addr_inc+aligned_addr : st_cur==BP_BURST ? burst_addr_inc+burst_addr : 'x; 
-assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? aligned_addr : st_cur==BP_BURST ? burst_addr : 'x);
+assign burst_addr_inc   = usr_wburst==BT_FIXED ? '0 : {{(AXI_BYTESW-1){1'b0}},1'b1}<<usr_wsize;
+assign burst_addr_nxt   = st_cur==BP_FIRST ? burst_addr_inc+{1'b0,aligned_addr} : st_cur==BP_BURST ? burst_addr_inc+{1'b0,burst_addr} : 'x; 
+assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? {1'b0,aligned_addr} : st_cur==BP_BURST ? {1'b0,burst_addr} : 'x);
 assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
 assign aligned_addr     = start_addr_mask & start_addr;
 assign burst_last       = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
@@ -244,7 +244,7 @@ always_comb begin
 end
 
 // others
-assign error_size = (usr_wsize > (AXI_SW'($clog2(AXI_BYTES)))) | usr_wsize_error;
+assign error_size = (usr_wsize > $clog2(AXI_BYTES)) | usr_wsize_error;
 assign usr_bresp  = { error_size | error_w4KB, 1'b0 };
 
 always_ff @(posedge clk or negedge rst_n) begin 
@@ -256,7 +256,7 @@ end
 
 always_comb begin
     case(st_cur)
-        BP_FIRST: st_nxt = aff_re && aq_len ? BP_BURST : st_cur; // if burst length is 1, won't jump to <BP_BURST>
+        BP_FIRST: st_nxt = aff_re && aq_len>0 ? BP_BURST : st_cur; // if burst length is 1, won't jump to <BP_BURST>
         BP_BURST: st_nxt = burst_last ? (!bff_wfull ? BP_FIRST : BP_BRESP) : st_cur;
         BP_BRESP: st_nxt = !bff_wfull ? BP_FIRST : st_cur;
         BP_IDLE : st_nxt = BP_FIRST;
@@ -270,7 +270,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         burst_addr <= '0;
     end
     else if(st_cur==BP_FIRST) begin
-        burst_cc   <= st_nxt==BP_BURST ? AXI_BURSTW'(1) : 'x;
+        burst_cc   <= st_nxt==BP_BURST ? {{(AXI_BURSTW-1){1'b0}},1'b1} : 'x;
         burst_addr <= st_nxt==BP_BURST ? burst_addr_nxt_b[0 +: AXI_AW] : 'x;
     end
     else if(st_cur==BP_BURST) begin
@@ -336,8 +336,15 @@ afifo #(
     .q        ( bff_q        )
 );
 
-always_ff @(posedge clk) begin
-    if(aff_re) begin
+always_ff @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        aq_id_latch    <= '0;
+        aq_addr_latch  <= '0;
+        aq_len_latch   <= '0;
+        aq_size_latch  <= '0;
+        aq_burst_latch <= '0;
+    end
+    else if(aff_re) begin
         aq_id_latch    <= aq_id   ;
         aq_addr_latch  <= aq_addr ;
         aq_len_latch   <= aq_len  ;

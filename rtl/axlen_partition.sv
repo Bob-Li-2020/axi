@@ -93,7 +93,7 @@ assign axsize        = AXI_SW'($clog2(AXI_BYTES));
 assign axburst       = AXI_BURSTW'(1)    ;
 assign axvalid       = st_cur==BUSY      ;
 
-assign axlen_prompt  = {'0, ~addr[B-1:L]};
+assign axlen_prompt  = {{(AXI_LW-(B-L)){1'b0}}, ~addr[B-1:L]};
 assign addr_last     = axvalid & axready && len-axlen-1'b1=='0;
 assign dma_done      = st_cur==DONE      ;
 assign ost_cc_nxt    = ost_cc + (axvalid & axready) - (usr_bvalid & usr_bready);
