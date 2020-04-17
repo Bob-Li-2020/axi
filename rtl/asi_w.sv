@@ -187,7 +187,6 @@ assign usr_wstrb        = wff_re ? wq_strb : '0;
 assign usr_wlast        = wff_re ? wq_last : '0; 
 assign usr_we           = wff_re             ;
 assign usr_wrequest     = aff_rcnt-aff_re>0  ;
-assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST && !burst_last;
 
 // easy
 assign clk              = usr_clk            ;
@@ -229,7 +228,6 @@ assign { bq_bid, bq_bresp } = bff_q          ;
 // burst
 assign burst_addr_inc   = usr_wburst==BT_FIXED ? '0 : {{(AXI_BYTESW-1){1'b0}},1'b1}<<usr_wsize;
 assign burst_addr_nxt   = st_cur==BP_FIRST ? burst_addr_inc+{1'b0,aligned_addr} : st_cur==BP_BURST ? burst_addr_inc+{1'b0,burst_addr} : 'x; 
-assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? {1'b0,aligned_addr} : st_cur==BP_BURST ? {1'b0,burst_addr} : 'x);
 assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
 assign aligned_addr     = start_addr_mask & start_addr;
 assign burst_last       = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
@@ -246,6 +244,17 @@ end
 // others
 assign error_size = (usr_wsize > $clog2(AXI_BYTES)) | usr_wsize_error;
 assign usr_bresp  = { error_size | error_w4KB, 1'b0 };
+
+generate 
+    if(AXI_AW>12) begin: ERROR_4KB
+        assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? {1'b0,aligned_addr} : st_cur==BP_BURST ? {1'b0,burst_addr} : 'x);
+        assign error_w4KB = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST && !burst_last;
+    end
+    else begin
+        assign burst_addr_nxt_b = burst_addr_nxt; 
+        assign error_w4KB = 1'b0;       
+    end
+endgenerate
 
 always_ff @(posedge clk or negedge rst_n) begin 
     if(!rst_n) 
