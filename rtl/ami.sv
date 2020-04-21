@@ -39,83 +39,83 @@ module ami //ami: Axi Master Interface
     L          = $clog2(AXI_BYTES)   ,
     B          = $clog2(BL)+L 
 )(
-    //---- AXI GLOBAL ------------------------------
-    input  logic                    ACLK           ,
-    input  logic                    ARESETn        ,
-    //---- AXI AW ----------------------------------
-    output logic [AXI_IW-1     : 0] AWID           ,
-    output logic [AXI_AW-1     : 0] AWADDR         ,
-    output logic [AXI_LW-1     : 0] AWLEN          ,
-    output logic [AXI_SW-1     : 0] AWSIZE         ,
-    output logic [AXI_BURSTW-1 : 0] AWBURST        ,
-    output logic                    AWVALID        ,
-    input  logic                    AWREADY        ,
-    output logic                    AWLOCK         ,
-    output logic [3            : 0] AWCACHE        ,
-    output logic [2            : 0] AWPROT         ,
-    output logic [3            : 0] AWQOS          ,
-    output logic [3            : 0] AWREGION       ,
-    //---- AXI W -----------------------------------
-    output logic [AXI_DW-1     : 0] WDATA          ,
-    output logic [AXI_WSTRBW-1 : 0] WSTRB          ,
-    output logic                    WLAST          ,
-    output logic                    WVALID         ,
-    input  logic                    WREADY         ,
-    //---- AXI B -----------------------------------
-    input  logic [AXI_IW-1     : 0] BID            ,
-    input  logic [AXI_BRESPW-1 : 0] BRESP          ,
-    input  logic                    BVALID         ,
-    output logic                    BREADY         ,
-    //---- AXI AR ----------------------------------
-    output logic [AXI_IW-1     : 0] ARID           ,
-    output logic [AXI_AW-1     : 0] ARADDR         ,
-    output logic [AXI_LW-1     : 0] ARLEN          ,
-    output logic [AXI_SW-1     : 0] ARSIZE         ,
-    output logic [AXI_BURSTW-1 : 0] ARBURST        ,
-    output logic                    ARVALID        ,
-    input  logic                    ARREADY        ,
-    output logic                    ARLOCK         ,
-    output logic [3            : 0] ARCACHE        ,
-    output logic [2            : 0] ARPROT         ,
-    output logic [3            : 0] ARQOS          ,
-    output logic [3            : 0] ARREGION       ,
-    //---- AXI R -----------------------------------
-    input  logic [AXI_IW-1     : 0] RID            ,
-    input  logic [AXI_DW-1     : 0] RDATA          ,
-    input  logic [AXI_RRESPW-1 : 0] RRESP          ,
-    input  logic                    RLAST          ,
-    input  logic                    RVALID         ,
-    output logic                    RREADY         ,
-    //---- USER GLOBAL -----------------------------
-    input  logic                    usr_clk        ,
-    input  logic                    usr_reset_n    ,
-    //---- CONFIG DMA WRITE ------------------------
-    input  logic                    cfg_dmaw_valid ,
-    output logic                    cfg_dmaw_ready ,
-    input  logic [31           : 0] cfg_dmaw_sa    , // dma write start address   
-    input  logic [31           : 0] cfg_dmaw_len   , // dma write length
-    input  logic                    dmaw_irq_w1c   , // dmaw interrupt write 1 clear
-    output logic                    dmaw_irq       , // dmaw interrupt
-    output logic [3            : 0] dmaw_err       , // dmaw error
-    //---- CONFIG DMA READ -------------------------
-    input  logic                    cfg_dmar_valid ,
-    output logic                    cfg_dmar_ready ,
-    input  logic [31           : 0] cfg_dmar_sa    , // dma read start address   
-    input  logic [31           : 0] cfg_dmar_len   , // dma read length
-    input  logic                    dmar_irq_w1c   , // dmar interrupt write 1 clear
-    output logic                    dmar_irq       , // dmar interrupt
-    output logic [3            : 0] dmar_err       , // dmaw error
-    //---- USER W  ---------------------------------
-    input  logic [AXI_DW-1     : 0] usr_wdata      ,
-    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb      ,
-    input  logic                    usr_wlast      ,
-    input  logic                    usr_wvalid     ,
-    output logic                    usr_wready     ,
-    //---- USER R  ---------------------------------
-    output logic [AXI_DW-1     : 0] usr_rdata      ,
-    output logic                    usr_rlast      ,
-    output logic                    usr_rvalid     ,
-    input  logic                    usr_rready      
+    //---- AXI GLOBAL ----------------------------
+    input  logic                    ACLK         ,
+    input  logic                    ARESETn      ,
+    //---- AXI AW --------------------------------
+    output logic [AXI_IW-1     : 0] AWID         ,
+    output logic [AXI_AW-1     : 0] AWADDR       ,
+    output logic [AXI_LW-1     : 0] AWLEN        ,
+    output logic [AXI_SW-1     : 0] AWSIZE       ,
+    output logic [AXI_BURSTW-1 : 0] AWBURST      ,
+    output logic                    AWVALID      ,
+    input  logic                    AWREADY      ,
+    output logic                    AWLOCK       ,
+    output logic [3            : 0] AWCACHE      ,
+    output logic [2            : 0] AWPROT       ,
+    output logic [3            : 0] AWQOS        ,
+    output logic [3            : 0] AWREGION     ,
+    //---- AXI W ---------------------------------
+    output logic [AXI_DW-1     : 0] WDATA        ,
+    output logic [AXI_WSTRBW-1 : 0] WSTRB        ,
+    output logic                    WLAST        ,
+    output logic                    WVALID       ,
+    input  logic                    WREADY       ,
+    //---- AXI B ---------------------------------
+    input  logic [AXI_IW-1     : 0] BID          ,
+    input  logic [AXI_BRESPW-1 : 0] BRESP        ,
+    input  logic                    BVALID       ,
+    output logic                    BREADY       ,
+    //---- AXI AR --------------------------------
+    output logic [AXI_IW-1     : 0] ARID         ,
+    output logic [AXI_AW-1     : 0] ARADDR       ,
+    output logic [AXI_LW-1     : 0] ARLEN        ,
+    output logic [AXI_SW-1     : 0] ARSIZE       ,
+    output logic [AXI_BURSTW-1 : 0] ARBURST      ,
+    output logic                    ARVALID      ,
+    input  logic                    ARREADY      ,
+    output logic                    ARLOCK       ,
+    output logic [3            : 0] ARCACHE      ,
+    output logic [2            : 0] ARPROT       ,
+    output logic [3            : 0] ARQOS        ,
+    output logic [3            : 0] ARREGION     ,
+    //---- AXI R ---------------------------------
+    input  logic [AXI_IW-1     : 0] RID          ,
+    input  logic [AXI_DW-1     : 0] RDATA        ,
+    input  logic [AXI_RRESPW-1 : 0] RRESP        ,
+    input  logic                    RLAST        ,
+    input  logic                    RVALID       ,
+    output logic                    RREADY       ,
+    //---- USER GLOBAL ---------------------------
+    input  logic                    usr_clk      ,
+    input  logic                    usr_reset_n  ,
+    //---- CONFIG DMA WRITE ----------------------
+    input  logic                    dmaw_valid   ,
+    output logic                    dmaw_ready   ,
+    input  logic [31           : 0] dmaw_dst_sa  , // dma write start address   
+    input  logic [31           : 0] dmaw_len     , // dma write length
+    input  logic                    dmaw_irq_w1c , // dmaw interrupt write 1 clear
+    output logic                    dmaw_irq     , // dmaw interrupt
+    output logic [3            : 0] dmaw_err     , // dmaw error
+    //---- CONFIG DMA READ -----------------------
+    input  logic                    dmar_valid   ,
+    output logic                    dmar_ready   ,
+    input  logic [31           : 0] dmar_dst_sa  , // dma read start address   
+    input  logic [31           : 0] dmar_len     , // dma read length
+    input  logic                    dmar_irq_w1c , // dmar interrupt write 1 clear
+    output logic                    dmar_irq     , // dmar interrupt
+    output logic [3            : 0] dmar_err     , // dmaw error
+    //---- USER W  -------------------------------
+    input  logic [AXI_DW-1     : 0] usr_wdata    ,
+    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb    ,
+    input  logic                    usr_wlast    ,
+    input  logic                    usr_wvalid   ,
+    output logic                    usr_wready   ,
+    //---- USER R  -------------------------------
+    output logic [AXI_DW-1     : 0] usr_rdata    ,
+    output logic                    usr_rlast    ,
+    output logic                    usr_rvalid   ,
+    input  logic                    usr_rready    
 );
 
 timeunit 1ns;
@@ -174,29 +174,29 @@ axlen_partition #(
     .L          ( L          ),
     .B          ( B          )
 ) arlen_partition (
-    .clk           ( usr_clk                ),
-    .reset_n       ( usr_reset_n            ),
+    .clk         ( usr_clk                ),
+    .reset_n     ( usr_reset_n            ),
 
-    .cfg_dma_valid ( cfg_dmar_valid         ),
-    .cfg_dma_ready ( cfg_dmar_ready         ),
-    .cfg_dma_sa    ( cfg_dmar_sa            ),
-    .cfg_dma_len   ( cfg_dmar_len           ),
-    .dma_irq_w1c   ( dmar_irq_w1c           ),
-    .dma_irq       ( dmar_irq               ),
-    .dma_err       ( dmar_err               ),
+    .dma_valid   ( dmar_valid             ),
+    .dma_ready   ( dmar_ready             ),
+    .dma_dst_sa  ( dmar_dst_sa            ),
+    .dma_len     ( dmar_len               ),
+    .dma_irq_w1c ( dmar_irq_w1c           ),
+    .dma_irq     ( dmar_irq               ),
+    .dma_err     ( dmar_err               ),
 
-    .axid          ( usr_arid               ),
-    .axaddr        ( usr_araddr             ),
-    .axlen         ( usr_arlen              ),
-    .axsize        ( usr_arsize             ),
-    .axburst       ( usr_arburst            ),
-    .axvalid       ( usr_arvalid            ),
-    .axready       ( usr_arready            ),
+    .axid        ( usr_arid               ),
+    .axaddr      ( usr_araddr             ),
+    .axlen       ( usr_arlen              ),
+    .axsize      ( usr_arsize             ),
+    .axburst     ( usr_arburst            ),
+    .axvalid     ( usr_arvalid            ),
+    .axready     ( usr_arready            ),
 
-    .usr_bid       ( usr_rid                ),
-    .usr_bresp     ( usr_rresp              ),     
-    .usr_bvalid    ( usr_rvalid & usr_rlast ),
-    .usr_bready    ( usr_rready             ) 
+    .usr_bid     ( usr_rid                ),
+    .usr_bresp   ( usr_rresp              ),     
+    .usr_bvalid  ( usr_rvalid & usr_rlast ),
+    .usr_bready  ( usr_rready             ) 
 );
 
 axlen_partition #(
@@ -223,29 +223,29 @@ axlen_partition #(
     .L          ( L          ),
     .B          ( B          )
 ) awlen_partition (
-    .clk           ( usr_clk        ),
-    .reset_n       ( usr_reset_n    ),
+    .clk         ( usr_clk      ),
+    .reset_n     ( usr_reset_n  ),
 
-    .cfg_dma_valid ( cfg_dmaw_valid ),
-    .cfg_dma_ready ( cfg_dmaw_ready ),
-    .cfg_dma_sa    ( cfg_dmaw_sa    ),
-    .cfg_dma_len   ( cfg_dmaw_len   ),
-    .dma_irq_w1c   ( dmaw_irq_w1c   ),
-    .dma_irq       ( dmaw_irq       ),
-    .dma_err       ( dmaw_err       ),
+    .dma_valid   ( dmaw_valid   ),
+    .dma_ready   ( dmaw_ready   ),
+    .dma_dst_sa  ( dmaw_dst_sa  ),
+    .dma_len     ( dmaw_len     ),
+    .dma_irq_w1c ( dmaw_irq_w1c ),
+    .dma_irq     ( dmaw_irq     ),
+    .dma_err     ( dmaw_err     ),
 
-    .axid          ( usr_awid       ),
-    .axaddr        ( usr_awaddr     ),
-    .axlen         ( usr_awlen      ),
-    .axsize        ( usr_awsize     ),
-    .axburst       ( usr_awburst    ),
-    .axvalid       ( usr_awvalid    ),
-    .axready       ( usr_awready    ), 
+    .axid        ( usr_awid     ),
+    .axaddr      ( usr_awaddr   ),
+    .axlen       ( usr_awlen    ),
+    .axsize      ( usr_awsize   ),
+    .axburst     ( usr_awburst  ),
+    .axvalid     ( usr_awvalid  ),
+    .axready     ( usr_awready  ), 
 
-    .usr_bid       ( usr_bid        ),
-    .usr_bresp     ( usr_bresp      ),     
-    .usr_bvalid    ( usr_bvalid     ),
-    .usr_bready    ( usr_bready     ) 
+    .usr_bid     ( usr_bid      ),
+    .usr_bresp   ( usr_bresp    ),     
+    .usr_bvalid  ( usr_bvalid   ),
+    .usr_bready  ( usr_bready   ) 
 );
 
 ami_w #(
