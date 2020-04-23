@@ -12,7 +12,17 @@
 //----------------------        2'b01: EXOKAY; 
 //----------------------        2'b10: SLVERR; 
 //----------------------        2'b00: DECERR. 
+//----------------------        
 
+// DMA write(OCM->EXTERNAL): 
+// step1 - CONFIGURE  : Set values of <dmaw_dst_sa>, <dmaw_len> and assert <dmaw_valid> and wait for handshake with <dmaw_ready> happen
+// step2 - DRIVE DATA : Feed write data in by driving <usr_wdata>, <usr_wvalid>, until all write data are accepted(indicated by handshake <usr_wready>)
+// step3 - INTERUPT   : DMA write interupt <dmaw_irq> shall be asserted. Clear <dmaw_irq> by driving <dmaw_irq_w1c> high
+
+// DMA READ(EXTERNAL->OCM): 
+// step1 - CONFIGURE    : Set values of <dmar_dst_sa>, <dmar_len> and assert <dmar_valid> and wait for handshake with <dmar_ready> happen
+// step2 - RECEIVE DATA : Receive <usr_rdata>
+// step3 - INTERUPT     : Clear DMA read interrupt <dmar_irq> by driving <dmar_irq_w1c> high
 
 module ami //ami: Axi Master Interface
 #(
