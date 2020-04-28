@@ -47,61 +47,61 @@ module asi
     AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
     AXI_BYTESW = $clog2(AXI_BYTES+1)   
 )(
-    //---- AXI GLOBAL --------------------------
-    input  logic                    ACLK       ,
-    input  logic                    ARESETn    ,
-    //---- AXI ADDRESS WRITE -------------------
-    input  logic [AXI_IW-1     : 0] AWID       ,
-    input  logic [AXI_AW-1     : 0] AWADDR     ,
-    input  logic [AXI_LW-1     : 0] AWLEN      ,
-    input  logic [AXI_SW-1     : 0] AWSIZE     ,
-    input  logic [AXI_BURSTW-1 : 0] AWBURST    ,
-    input  logic                    AWVALID    ,
-    output logic                    AWREADY    ,
-    input  logic                    AWLOCK     , // NO LOADS 
-    input  logic [3            : 0] AWCACHE    , // NO LOADS
-    input  logic [2            : 0] AWPROT     , // NO LOADS
-    input  logic [3            : 0] AWQOS      , // NO LOADS
-    input  logic [3            : 0] AWREGION   , // NO LOADS
-    //---- AXI DATA WRITE ----------------------
-    input  logic [AXI_DW-1     : 0] WDATA      ,
-    input  logic [AXI_WSTRBW-1 : 0] WSTRB      ,
-    input  logic                    WLAST      ,
-    input  logic                    WVALID     ,
-    output logic                    WREADY     ,
-    //---- AXI WRITE RESPONSE ------------------
-    output logic [AXI_IW-1     : 0] BID        ,
-    output logic [AXI_BRESPW-1 : 0] BRESP      ,
-    output logic                    BVALID     ,
-    input  logic                    BREADY     ,
-    //---- AXI ADDRESS READ --------------------
-    input  logic [AXI_IW-1     : 0] ARID       ,
-    input  logic [AXI_AW-1     : 0] ARADDR     ,
-    input  logic [AXI_LW-1     : 0] ARLEN      ,
-    input  logic [AXI_SW-1     : 0] ARSIZE     ,
-    input  logic [AXI_BURSTW-1 : 0] ARBURST    ,
-    input  logic                    ARVALID    ,
-    output logic                    ARREADY    ,
-    input  logic                    ARLOCK     , // NO LOADS 
-    input  logic [3            : 0] ARCACHE    , // NO LOADS 
-    input  logic [2            : 0] ARPROT     , // NO LOADS 
-    input  logic [3            : 0] ARQOS      , // NO LOADS 
-    input  logic [3            : 0] ARREGION   , // NO LOADS
-    //---- AXI READ DATA -----------------------
-    output logic [AXI_IW-1     : 0] RID        ,
-    output logic [AXI_DW-1     : 0] RDATA      ,
-    output logic [AXI_RRESPW-1 : 0] RRESP      ,
-    output logic                    RLAST      ,
-    output logic                    RVALID     ,
-    input  logic                    RREADY     ,
-    //---- RAM INTERFACE -----------------------
-    input  logic                    RAM_CLK    ,
-    input  logic                    RAM_RESETn ,
-    output logic                    RAM_CEN    , // RAM Clock Enable. Active-Low
-    output logic [AXI_WSTRBW-1 : 0] RAM_WEN    , // RAM Write Enable. Active-Low
-    output logic [AXI_AW-1     : 0] RAM_A      , // RAM Address
-    output logic [AXI_DW-1     : 0] RAM_D      , // RAM D
-    input  logic [AXI_DW-1     : 0] RAM_Q        // RAM Q
+    //---- AXI GLOBAL ---------------------------
+    input  logic                    ACLK        ,
+    input  logic                    ARESETn     ,
+    //---- AXI ADDRESS WRITE --------------------
+    input  logic [AXI_IW-1     : 0] AWID        ,
+    input  logic [AXI_AW-1     : 0] AWADDR      ,
+    input  logic [AXI_LW-1     : 0] AWLEN       ,
+    input  logic [AXI_SW-1     : 0] AWSIZE      ,
+    input  logic [AXI_BURSTW-1 : 0] AWBURST     ,
+    input  logic                    AWVALID     ,
+    output logic                    AWREADY     ,
+    input  logic                    AWLOCK      , // NO LOADS 
+    input  logic [3            : 0] AWCACHE     , // NO LOADS
+    input  logic [2            : 0] AWPROT      , // NO LOADS
+    input  logic [3            : 0] AWQOS       , // NO LOADS
+    input  logic [3            : 0] AWREGION    , // NO LOADS
+    //---- AXI DATA WRITE -----------------------
+    input  logic [AXI_DW-1     : 0] WDATA       ,
+    input  logic [AXI_WSTRBW-1 : 0] WSTRB       ,
+    input  logic                    WLAST       ,
+    input  logic                    WVALID      ,
+    output logic                    WREADY      ,
+    //---- AXI WRITE RESPONSE -------------------
+    output logic [AXI_IW-1     : 0] BID         ,
+    output logic [AXI_BRESPW-1 : 0] BRESP       ,
+    output logic                    BVALID      ,
+    input  logic                    BREADY      ,
+    //---- AXI ADDRESS READ ---------------------
+    input  logic [AXI_IW-1     : 0] ARID        ,
+    input  logic [AXI_AW-1     : 0] ARADDR      ,
+    input  logic [AXI_LW-1     : 0] ARLEN       ,
+    input  logic [AXI_SW-1     : 0] ARSIZE      ,
+    input  logic [AXI_BURSTW-1 : 0] ARBURST     ,
+    input  logic                    ARVALID     ,
+    output logic                    ARREADY     ,
+    input  logic                    ARLOCK      , // NO LOADS 
+    input  logic [3            : 0] ARCACHE     , // NO LOADS 
+    input  logic [2            : 0] ARPROT      , // NO LOADS 
+    input  logic [3            : 0] ARQOS       , // NO LOADS 
+    input  logic [3            : 0] ARREGION    , // NO LOADS
+    //---- AXI READ DATA ------------------------
+    output logic [AXI_IW-1     : 0] RID         ,
+    output logic [AXI_DW-1     : 0] RDATA       ,
+    output logic [AXI_RRESPW-1 : 0] RRESP       ,
+    output logic                    RLAST       ,
+    output logic                    RVALID      ,
+    input  logic                    RREADY      ,
+    //---- RAM INTERFACE ------------------------
+    input  logic                    usr_clk     ,
+    input  logic                    usr_reset_n ,
+    output logic                    RAM_CEN     , // RAM Clock Enable. Active-Low
+    output logic [AXI_WSTRBW-1 : 0] RAM_WEN     , // RAM Write Enable. Active-Low
+    output logic [AXI_AW-1     : 0] RAM_A       , // RAM Address
+    output logic [AXI_DW-1     : 0] RAM_D       , // RAM D
+    input  logic [AXI_DW-1     : 0] RAM_Q         // RAM Q
 );
 
 timeunit 1ns;
@@ -109,9 +109,6 @@ timeprecision 1ps;
 
 enum logic [1:0] { ARB_IDLE=2'b00, ARB_READ, ARB_WRITE } st_cur, st_nxt; // arbiter state machine
 
-//---- USER LOGIC SIGNALS ----------------
-logic                    usr_clk         ; // input
-logic                    usr_reset_n     ; // input
 //AW CHANNEL
 logic [AXI_IW-1     : 0] usr_wid         ; // output 
 logic [AXI_LW-1     : 0] usr_wlen        ; // output 
@@ -150,16 +147,14 @@ assign RAM_CEN         = ~(usr_we | usr_re); // clock enable
 assign RAM_D           = usr_wdata         ; // write data
 assign RAM_WEN         = ~(usr_wstrb & {AXI_WSTRBW{usr_we}}); // write enable
 
-assign usr_clk         = RAM_CLK           ;
-assign usr_reset_n     = RAM_RESETn        ;
 assign usr_wgrant      = st_cur==ARB_WRITE ;
 assign usr_wsize_error = 1'b0              ;
 assign usr_rdata       = RAM_Q             ;
 assign usr_rgrant      = st_cur==ARB_READ  ; 
 assign usr_rsize_error = 1'b0              ;
 
-always_ff @(posedge RAM_CLK or negedge RAM_RESETn) begin
-    if(!RAM_RESETn) begin
+always_ff @(posedge usr_clk or negedge usr_reset_n) begin
+    if(!usr_reset_n) begin
         st_cur <= ARB_IDLE;
     end
     else begin
