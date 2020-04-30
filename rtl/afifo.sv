@@ -22,33 +22,33 @@ module afifo #(
 );
 timeunit 1ns;
 timeprecision 1ps;
-wire   EmptyN ;
-wire   FullN  ;
-wire  [AW:0]  WNum;
-wire  [AW:0]  RNum;
-assign wfull  = ~FullN ;
-assign rempty = ~EmptyN;
+wire          EmptyN ;
+wire          FullN  ;
+wire [AW : 0] WNum   ;
+wire [AW : 0] RNum   ;
+assign wfull  = ~FullN     ;
+assign rempty = ~EmptyN    ;
 assign wafull = WNum >= AFN;
-assign wcnt   = WNum;
-assign rcnt   = RNum;
+assign wcnt   = WNum       ;
+assign rcnt   = RNum       ;
 util_fifoa #(
     .AW ( AW ),
     .DW ( DW )
 ) u_fifoa (
-    .WClk      ( wclk                ),
-    .WRstN     ( wreset_n            ),
-    .RClk      ( rclk                ),
-    .RRstN     ( rreset_n            ),
-    .Read      ( re                  ),
-    .Write     ( we                  ),
-    .EmptyN    ( EmptyN              ),
-    .FullN     ( FullN               ),
+    .WClk      ( wclk     ),
+    .WRstN     ( wreset_n ),
+    .RClk      ( rclk     ),
+    .RRstN     ( rreset_n ),
+    .Read      ( re       ),
+    .Write     ( we       ),
+    .EmptyN    ( EmptyN   ),
+    .FullN     ( FullN    ),
     .RFullN(),
-    .WData     ( d                   ),
-    .RData     ( q                   ),
-    .WNum      ( WNum                ),
-    .RNum      ( RNum                ),
-    .TEST_MODE ( 1'b0                )
+    .WData     ( d        ),
+    .RData     ( q        ),
+    .WNum      ( WNum     ),
+    .RNum      ( RNum     ),
+    .TEST_MODE ( 1'b0     )
 );
 endmodule
 
@@ -91,23 +91,23 @@ output  RFullN;
 output  [AW:0]  WNum, RNum;
 input   TEST_MODE;
 
-wire     rstn_w;
-wire     rstn_r;
+wire   rstn_w ;
+wire   rstn_r ;
 
 generate
     if(RS==0) //reset not propagate to other side
         begin : RS0
-        assign   rstn_w = WRstN;
-        assign   rstn_r = RRstN;
+        assign rstn_w = WRstN;
+        assign rstn_r = RRstN;
         end
     else
         begin : RS1
-        wire     rstn = WRstN & RRstN;
-        reg      rstn_w_sync,rstn_w_meta;
-        reg      rstn_r_sync,rstn_r_meta;
-        assign   rstn_w = TEST_MODE ? WRstN:rstn_w_sync;
-        assign   rstn_r = TEST_MODE ? RRstN:rstn_r_sync;
-        
+        wire   rstn = WRstN & RRstN;
+        reg    rstn_w_sync,rstn_w_meta;
+        reg    rstn_r_sync,rstn_r_meta;
+        assign rstn_w = TEST_MODE ? WRstN:rstn_w_sync;
+        assign rstn_r = TEST_MODE ? RRstN:rstn_r_sync;
+
         always  @(posedge WClk or negedge rstn)
             if(!rstn)  {rstn_w_sync,rstn_w_meta} <= 2'b0;
             else       {rstn_w_sync,rstn_w_meta} <= {rstn_w_meta, 1'b1};
@@ -120,33 +120,33 @@ endgenerate
 
 //use fifoa_ctrl and an async read RAM
 
-  wire [AW-1:0] RAddr, WAddr;
+  wire [AW-1 : 0] RAddr, WAddr         ;
   //ram
-  reg  [DW-1:0] mem_ccdds[DEPTH-1:0]; //cross clock domain data startpoint
+  reg  [DW-1 : 0] mem_ccdds[DEPTH-1:0] ; //cross clock domain data startpoint
   assign RData = mem_ccdds[RAddr];
-  
+
   always @(posedge WClk)
       if(Write && FullN)
           mem_ccdds[WAddr] <= WData;
   
   util_fifoa_ctrl #(AW,PT) u(
-                  .WClk  (WClk  ),
-                  .WRstN (rstn_w),
-                  .Write (Write ),
-                  .FullN (FullN ),
-                  .WAddr (WAddr ),
-                  .RClk  (RClk  ),
-                  .RRstN (rstn_r),
-                  .Read  (Read  ),
-                  .EmptyN(EmptyN),
-                  .RAddr (RAddr ),
-                  .RFullN(RFullN),
+                  .WClk          ( WClk   ),
+                  .WRstN         ( rstn_w ),
+                  .Write         ( Write  ),
+                  .FullN         ( FullN  ),
+                  .WAddr         ( WAddr  ),
+                  .RClk          ( RClk   ),
+                  .RRstN         ( rstn_r ),
+                  .Read          ( Read   ),
+                  .EmptyN        ( EmptyN ),
+                  .RAddr         ( RAddr  ),
+                  .RFullN        ( RFullN ),
                   .WPtrGray(),
                   .RPtrGray(),
                   .WPtrGray_sync(),
                   .RPtrGray_sync(),
-                  .WNum  (WNum  ),
-                  .RNum  (RNum  )
+                  .WNum          ( WNum   ),
+                  .RNum          ( RNum   )
               );
 
 
@@ -200,39 +200,39 @@ output[DL:0]    RPtrGray_sync;
 output[DL:0]    WNum;
 output[DL:0]    RNum;
 
-reg             valid_r;
-reg             nfull_r; //fulln at write side
-reg             rnful_r; //fulln at read side
-reg   [DL:0]    RPtrGray;
-reg   [DL:0]    WPtrGray;
-reg   [DL:0]    RPtrGray_sync;
-reg   [DL:0]    RPtrGray_meta;
-reg   [DL:0]    WPtrGray_sync;
-reg   [DL:0]    WPtrGray_meta;
-reg   [DL-1:0]  WAddr;
-reg   [DL-1:0]  RAddr;
-reg   [DL:0]    RPtrGray_cmp;
-reg   [DL:0]    WPtrGray_cmp;
+reg             valid_r       ;
+reg             nfull_r       ; //fulln at write side
+reg             rnful_r       ; //fulln at read side
+reg  [DL   : 0] RPtrGray      ;
+reg  [DL   : 0] WPtrGray      ;
+reg  [DL   : 0] RPtrGray_sync ;
+reg  [DL   : 0] RPtrGray_meta ;
+reg  [DL   : 0] WPtrGray_sync ;
+reg  [DL   : 0] WPtrGray_meta ;
+reg  [DL-1 : 0] WAddr         ;
+reg  [DL-1 : 0] RAddr         ;
+reg  [DL   : 0] RPtrGray_cmp  ;
+reg  [DL   : 0] WPtrGray_cmp  ;
 
 wire            wt = PT ? (Write & FullN ) : Write;
-wire            rd = PT ? (Read  & EmptyN) : Read ;
+wire            rd = PT ? (Read  & EmptyN) : Read;
 
-wire  [DL:0]    RPtrBin      = GrayToBin(RPtrGray);
-wire  [DL:0]    RPtrBinA1    = RPtrBin + 1;
-wire  [DL:0]    RPtrGrayNx   = rd ? BinToGray(RPtrBinA1) : RPtrGray;
-wire  [DL:0]    WPtrBin      = GrayToBin(WPtrGray);
-wire  [DL:0]    WPtrBinNx    = WPtrBin + (wt ? 1 : 0);
-wire  [DL:0]    WPtrGrayNx   = BinToGray(WPtrBinNx);
+wire [DL   : 0] RPtrBin      = GrayToBin(RPtrGray);
+wire [DL   : 0] RPtrBinA1    = RPtrBin + 1;
+wire [DL   : 0] RPtrGrayNx   = rd ? BinToGray(RPtrBinA1) : RPtrGray;
+wire [DL   : 0] WPtrBin      = GrayToBin(WPtrGray);
+wire [DL   : 0] WPtrBinNx    = WPtrBin + (wt ? 1 : 0);
+wire [DL   : 0] WPtrGrayNx   = BinToGray(WPtrBinNx);
 
 wire            valid_c      = RPtrGray != WPtrGray_sync;
 wire            nfull_c      = WPtrGray != RPtrGray_cmp;
 wire            rnful_c      = RPtrGray != WPtrGray_cmp;
 
-assign          EmptyN       = ER  ? valid_r : valid_c;
-assign          FullN        = FR  ? nfull_r : nfull_c;
-assign          RFullN       = RFR ? rnful_r : rnful_c;
-assign          WNum         = WPtrBin - GrayToBin(RPtrGray_sync);
-assign          RNum         = GrayToBin(WPtrGray_sync) - RPtrBin;
+assign EmptyN = ER  ? valid_r : valid_c;
+assign FullN  = FR  ? nfull_r : nfull_c;
+assign RFullN = RFR ? rnful_r : rnful_c;
+assign WNum   = WPtrBin - GrayToBin(RPtrGray_sync);
+assign RNum   = GrayToBin(WPtrGray_sync) - RPtrBin;
 
 
 always @(*)

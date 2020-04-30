@@ -156,62 +156,62 @@ wire                     error_w4KB       ;
 logic [AXI_RRESPW-1 : 0] usr_rresp        ; // along with <usr_re>
 
 // output
-assign ARREADY          = ~aff_wfull       ;
-assign RID              = rq_id            ;
-assign RDATA            = rq_data          ;
-assign RRESP            = rq_resp          ;
-assign RLAST            = rq_last          ;
-assign RVALID           = ~rff_rempty      ;
-assign usr_rid          = st_cur==BP_FIRST ? aq_id    : aq_id_latch;
-assign usr_rlen         = st_cur==BP_FIRST ? aq_len   : aq_len_latch;
-assign usr_rsize        = st_cur==BP_FIRST ? aq_size  : aq_size_latch;
-assign usr_rburst       = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
-assign usr_raddr        = st_cur==BP_FIRST ? start_addr : burst_addr;
-assign usr_re           = aff_re || st_cur==BP_BURST && !rff_wafull2;
-assign usr_rlast        = burst_last       ;
-assign usr_rrequest     = aff_rcnt-aff_re>0;
+assign ARREADY        = ~aff_wfull       ;
+assign RID            = rq_id            ;
+assign RDATA          = rq_data          ;
+assign RRESP          = rq_resp          ;
+assign RLAST          = rq_last          ;
+assign RVALID         = ~rff_rempty      ;
+assign usr_rid        = st_cur==BP_FIRST ? aq_id    : aq_id_latch;
+assign usr_rlen       = st_cur==BP_FIRST ? aq_len   : aq_len_latch;
+assign usr_rsize      = st_cur==BP_FIRST ? aq_size  : aq_size_latch;
+assign usr_rburst     = st_cur==BP_FIRST ? aq_burst : aq_burst_latch;
+assign usr_raddr      = st_cur==BP_FIRST ? start_addr : burst_addr;
+assign usr_re         = aff_re || st_cur==BP_BURST && !rff_wafull2;
+assign usr_rlast      = burst_last       ;
+assign usr_rrequest   = aff_rcnt-aff_re>0;
 
 // easy
-assign clk              = usr_clk          ;
-assign rst_n            = usr_reset_n      ;
-assign aff_rvalid       = !aff_rempty      ; 
-assign aff_rready       = st_cur==BP_FIRST && ~rff_wafull2 & usr_rgrant;
+assign clk            = usr_clk          ;
+assign rst_n          = usr_reset_n      ;
+assign aff_rvalid     = !aff_rempty      ; 
+assign aff_rready     = st_cur==BP_FIRST && ~rff_wafull2 & usr_rgrant;
 
 // ar fifo
-assign aff_wreset_n     = ARESETn          ;
-assign aff_rreset_n     = usr_reset_n      ;
-assign aff_wclk         = ACLK             ;
-assign aff_rclk         = usr_clk          ;
-assign aff_we           = ARVALID & ARREADY;
-assign aff_re           = aff_rvalid & aff_rready;
-assign aff_d            = { ARID, ARADDR, ARLEN, ARSIZE, ARBURST };
+assign aff_wreset_n   = ARESETn          ;
+assign aff_rreset_n   = usr_reset_n      ;
+assign aff_wclk       = ACLK             ;
+assign aff_rclk       = usr_clk          ;
+assign aff_we         = ARVALID & ARREADY;
+assign aff_re         = aff_rvalid & aff_rready;
+assign aff_d          = { ARID, ARADDR, ARLEN, ARSIZE, ARBURST };
 assign { aq_id, aq_addr, aq_len, aq_size, aq_burst } = aff_q;
 
 // r fifo
-assign rff_wreset_n     = usr_reset_n      ;
-assign rff_rreset_n     = ARESETn          ;
-assign rff_wclk         = usr_clk          ;
-assign rff_rclk         = ACLK             ;
-assign rff_we           = usr_rvalid       ;
-assign rff_re           = RVALID & RREADY  ;
-assign rff_d            = { usr_rid_ws, usr_rdata, usr_rresp_ws, burst_last_ws }; 
+assign rff_wreset_n   = usr_reset_n      ;
+assign rff_rreset_n   = ARESETn          ;
+assign rff_wclk       = usr_clk          ;
+assign rff_rclk       = ACLK             ;
+assign rff_we         = usr_rvalid       ;
+assign rff_re         = RVALID & RREADY  ;
+assign rff_d          = { usr_rid_ws, usr_rdata, usr_rresp_ws, burst_last_ws }; 
 assign { rq_id, rq_data, rq_resp, rq_last } = rff_q;
 
 // burst
-assign burst_addr_inc   = usr_rburst==BT_FIXED ? '0 : {{(AXI_BYTESW-1){1'b0}},1'b1}<<usr_rsize;
-assign burst_addr_nxt   = st_cur==BP_FIRST ? (burst_addr_inc+{1'b0,aligned_addr}) : (st_cur==BP_BURST ? (!rff_wafull2 ? burst_addr_inc+{1'b0,burst_addr} : {1'b0,burst_addr}) : 'x);
-assign start_addr       = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
-assign aligned_addr     = start_addr_mask & start_addr;
-assign burst_last       = (aff_re && aq_len=='0) || (st_cur==BP_BURST && !rff_wafull2 && burst_cc==aq_len_latch);
+assign burst_addr_inc = usr_rburst==BT_FIXED ? '0 : {{(AXI_BYTESW-1){1'b0}},1'b1}<<usr_rsize;
+assign burst_addr_nxt = st_cur==BP_FIRST ? (burst_addr_inc+{1'b0,aligned_addr}) : (st_cur==BP_BURST ? (!rff_wafull2 ? burst_addr_inc+{1'b0,burst_addr} : {1'b0,burst_addr}) : 'x);
+assign start_addr     = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
+assign aligned_addr   = start_addr_mask & start_addr;
+assign burst_last     = (aff_re && aq_len=='0) || (st_cur==BP_BURST && !rff_wafull2 && burst_cc==aq_len_latch);
 
 generate 
     if(AXI_AW>12) begin: ERROR_4KB
         assign burst_addr_nxt_b = burst_addr_nxt[12]==start_addr[12] ? burst_addr_nxt : (st_cur==BP_FIRST ? {1'b0,aligned_addr} : st_cur==BP_BURST ? {1'b0,burst_addr} : 'x);
-        assign error_w4KB = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST && !burst_last;
+        assign error_w4KB       = burst_addr_nxt[12]!=start_addr[12] && st_cur==BP_BURST && !burst_last;
     end
     else begin: NO_ERROR_4KB
         assign burst_addr_nxt_b = burst_addr_nxt; 
-        assign error_w4KB = 1'b0;
+        assign error_w4KB       = 1'b0          ;
     end
 endgenerate
 //------- wait states control -------------

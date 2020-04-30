@@ -15,12 +15,12 @@
 //----------------------        
 
 // DMA write(OCM->EXTERNAL): 
-// step1 - CONFIGURE  : Set values of <dmaw_dst_sa>, <dmaw_len> and assert <dmaw_valid> and wait for handshake with <dmaw_ready> happen
+// step1 - CONFIGURE  : Set values of <dmaw_sa>, <dmaw_len> and assert <dmaw_valid> and wait for handshake with <dmaw_ready> happen
 // step2 - DRIVE DATA : Feed write data in by driving <usr_wdata>, <usr_wvalid>, until all write data are accepted(indicated by handshake <usr_wready>)
 // step3 - INTERUPT   : DMA write interupt <dmaw_irq> shall be asserted. Clear <dmaw_irq> by driving <dmaw_irq_w1c> high
 
 // DMA READ(EXTERNAL->OCM): 
-// step1 - CONFIGURE    : Set values of <dmar_dst_sa>, <dmar_len> and assert <dmar_valid> and wait for handshake with <dmar_ready> happen
+// step1 - CONFIGURE    : Set values of <dmar_sa>, <dmar_len> and assert <dmar_valid> and wait for handshake with <dmar_ready> happen
 // step2 - RECEIVE DATA : Receive <usr_rdata>
 // step3 - INTERUPT     : Clear DMA read interrupt <dmar_irq> by driving <dmar_irq_w1c> high
 
@@ -102,7 +102,7 @@ module ami //ami: Axi Master Interface
     //---- CONFIG DMA WRITE ----------------------
     input  logic                    dmaw_valid   ,
     output logic                    dmaw_ready   ,
-    input  logic [31           : 0] dmaw_dst_sa  , // dma write start address   
+    input  logic [31           : 0] dmaw_sa      , // dma write start address   
     input  logic [31           : 0] dmaw_len     , // dma write length
     input  logic                    dmaw_irq_w1c , // dmaw interrupt write 1 clear
     output logic                    dmaw_irq     , // dmaw interrupt
@@ -110,27 +110,38 @@ module ami //ami: Axi Master Interface
     //---- CONFIG DMA READ -----------------------
     input  logic                    dmar_valid   ,
     output logic                    dmar_ready   ,
-    input  logic [31           : 0] dmar_dst_sa  , // dma read start address   
+    input  logic [31           : 0] dmar_sa      , // dma read start address   
     input  logic [31           : 0] dmar_len     , // dma read length
     input  logic                    dmar_irq_w1c , // dmar interrupt write 1 clear
     output logic                    dmar_irq     , // dmar interrupt
     output logic [3            : 0] dmar_err     , // dmaw error
-    //---- USER W  -------------------------------
-    input  logic [AXI_DW-1     : 0] usr_wdata    ,
-    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb    ,
-    input  logic                    usr_wlast    ,
-    input  logic                    usr_wvalid   ,
-    output logic                    usr_wready   ,
-    //---- USER R  -------------------------------
-    output logic [AXI_DW-1     : 0] usr_rdata    ,
-    output logic                    usr_rlast    ,
-    output logic                    usr_rvalid   ,
-    input  logic                    usr_rready    
+    //---- DMA W  --------------------------------
+    input  logic [AXI_DW-1     : 0] dma_wdata    ,
+    input  logic [AXI_WSTRBW-1 : 0] dma_wstrb    ,
+    input  logic                    dma_wlast    ,
+    input  logic                    dma_wvalid   ,
+    output logic                    dma_wready   ,
+    //---- DMA R  --------------------------------
+    output logic [AXI_DW-1     : 0] dma_rdata    ,
+    output logic                    dma_rlast    ,
+    output logic                    dma_rvalid   ,
+    input  logic                    dma_rready    
 );
 
 timeunit 1ns;
 timeprecision 1ps;
 
+//---- USER W  -----------------------
+logic [AXI_DW-1     : 0] usr_wdata   ;
+logic [AXI_WSTRBW-1 : 0] usr_wstrb   ;
+logic                    usr_wlast   ;
+logic                    usr_wvalid  ;
+logic                    usr_wready  ;
+//---- USER R  -----------------------
+logic [AXI_DW-1     : 0] usr_rdata   ;
+logic                    usr_rlast   ;
+logic                    usr_rvalid  ;
+logic                    usr_rready  ;
 //---- USER AW -----------------------
 logic [AXI_IW-1     : 0] usr_awid    ;
 logic [AXI_AW-1     : 0] usr_awaddr  ;
@@ -156,9 +167,21 @@ logic                    usr_arready ;
 logic [AXI_IW-1     : 0] usr_rid     ;
 logic [AXI_RRESPW-1 : 0] usr_rresp   ;
 
+// DMA W
+assign usr_wdata  = dma_wdata ;
+assign usr_wstrb  = dma_wstrb ;
+assign usr_wlast  = dma_wlast ;
+assign usr_wvalid = dma_wvalid;
+assign dma_wready = usr_wready;
+// DMA R
+assign dma_rdata  = usr_rdata ;
+assign dma_rlast  = usr_rlast ;
+assign dma_rvalid = usr_rvalid;
+assign usr_rready = dma_rready; 
+
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
-assign usr_bready = 1'b1; // always ready to receive B channel output
+assign usr_bready = 1'b1      ; // always ready to receive B channel output
 
 axlen_partition #(
     //--------- AXI PARAMETERS -------
@@ -189,7 +212,7 @@ axlen_partition #(
 
     .dma_valid   ( dmar_valid             ),
     .dma_ready   ( dmar_ready             ),
-    .dma_dst_sa  ( dmar_dst_sa            ),
+    .dma_sa      ( dmar_sa                ),
     .dma_len     ( dmar_len               ),
     .dma_irq_w1c ( dmar_irq_w1c           ),
     .dma_irq     ( dmar_irq               ),
@@ -238,7 +261,7 @@ axlen_partition #(
 
     .dma_valid   ( dmaw_valid   ),
     .dma_ready   ( dmaw_ready   ),
-    .dma_dst_sa  ( dmaw_dst_sa  ),
+    .dma_sa      ( dmaw_sa      ),
     .dma_len     ( dmaw_len     ),
     .dma_irq_w1c ( dmaw_irq_w1c ),
     .dma_irq     ( dmaw_irq     ),

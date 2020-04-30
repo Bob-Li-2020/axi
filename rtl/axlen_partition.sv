@@ -37,7 +37,7 @@ module axlen_partition
     //---- CONFIG -------------------------------
     input  logic                    dma_valid   ,
     output logic                    dma_ready   ,
-    input  logic [31           : 0] dma_dst_sa  , // dma start address(bytes)   
+    input  logic [31           : 0] dma_sa      , // dma start address(bytes)   
     input  logic [31           : 0] dma_len     , // dma length(bytes) 
     input  logic                    dma_irq_w1c , // dma interrupt write 1 clear
     output logic                    dma_irq     , // dma interrupt
@@ -120,7 +120,7 @@ always_ff @(posedge clk or negedge reset_n)
         addr <= '0;
     end 
     else if(st_cur==IDLE && addr_we) begin
-        addr <= dma_dst_sa[31:L];
+        addr <= dma_sa[31:L];
     end
     else if(st_cur==BUSY && axvalid & axready) begin
         addr <= addr+axlen+1'b1;

@@ -50,12 +50,15 @@ class VerilogBeautifier:
         """ select one file in self.files_in and return """
         files_in = list()
         if len(self.files_in)>1:
-            print(f'Found {len(self.files_in)} verilog files in "{self.cwd}". Select a file to beautify:')
+            print(f'Found {len(self.files_in)} verilog files in "{self.cwd}". Select a file to beautify(type "a" to select all):')
             for i, f in enumerate(self.files_in):
                 print(f'{i}: {f}')
-            f_i = int(input())
-            #f_i = 0 # for test
-            files_in.append(self.files_in[f_i])
+            f_i = input()
+            if f_i=='a':
+                for i, f in enumerate(self.files_in):
+                    files_in.append(f)
+            else:
+                files_in.append(self.files_in[int(f_i)])
         else:
             files_in.append(self.files_in[0])
         return files_in
