@@ -99,6 +99,8 @@ module ami //ami: Axi Master Interface
     //---- USER GLOBAL ---------------------------
     input  logic                    usr_clk      ,
     input  logic                    usr_reset_n  ,
+    //---- CONFIG GLOBAL -------------------------
+    input  logic                    bm           , // dma batch mode. 1~configure with "dmaw_*" and "dmar_*" ports; 0~configure with "usr_*" ports
     //---- CONFIG DMA WRITE ----------------------
     input  logic                    dmaw_valid   ,
     output logic                    dmaw_ready   ,
@@ -115,73 +117,104 @@ module ami //ami: Axi Master Interface
     input  logic                    dmar_irq_w1c , // dmar interrupt write 1 clear
     output logic                    dmar_irq     , // dmar interrupt
     output logic [3            : 0] dmar_err     , // dmaw error
-    //---- DMA W  --------------------------------
-    input  logic [AXI_DW-1     : 0] dma_wdata    ,
-    input  logic [AXI_WSTRBW-1 : 0] dma_wstrb    ,
-    input  logic                    dma_wlast    ,
-    input  logic                    dma_wvalid   ,
-    output logic                    dma_wready   ,
-    //---- DMA R  --------------------------------
-    output logic [AXI_DW-1     : 0] dma_rdata    ,
-    output logic                    dma_rlast    ,
-    output logic                    dma_rvalid   ,
-    input  logic                    dma_rready    
+    //---- USR AW --------------------------------
+    input  logic [AXI_AW-1     : 0] usr_awaddr   ,
+    input  logic [AXI_LW-1     : 0] usr_awlen    ,
+    input  logic                    usr_awvalid  ,
+    output logic                    usr_awready  ,
+    //---- USR W  --------------------------------
+    input  logic [AXI_DW-1     : 0] usr_wdata    ,
+    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb    ,
+    input  logic                    usr_wlast    ,
+    input  logic                    usr_wvalid   ,
+    output logic                    usr_wready   ,
+    //---- USER B  -------------------------------
+    output logic [AXI_IW-1     : 0] usr_bid      ,
+    output logic [AXI_BRESPW-1 : 0] usr_bresp    ,
+    output logic                    usr_bvalid   ,
+    input  logic                    usr_bready   ,
+    //---- DIRECT CONFIG DMA READ ----------------
+    input  logic [AXI_AW-1     : 0] usr_araddr   ,
+    input  logic [AXI_LW-1     : 0] usr_arlen    ,
+    input  logic                    usr_arvalid  ,
+    output logic                    usr_arready  ,
+    //---- USR R  --------------------------------
+    output logic [AXI_IW-1     : 0] usr_rid      ,
+    output logic [AXI_DW-1     : 0] usr_rdata    ,
+    output logic [AXI_RRESPW-1 : 0] usr_rresp    ,
+    output logic                    usr_rlast    ,
+    output logic                    usr_rvalid   ,
+    input  logic                    usr_rready    
 );
 
 timeunit 1ns;
 timeprecision 1ps;
 
-//---- USER W  -----------------------
-logic [AXI_DW-1     : 0] usr_wdata   ;
-logic [AXI_WSTRBW-1 : 0] usr_wstrb   ;
-logic                    usr_wlast   ;
-logic                    usr_wvalid  ;
-logic                    usr_wready  ;
-//---- USER R  -----------------------
-logic [AXI_DW-1     : 0] usr_rdata   ;
-logic                    usr_rlast   ;
-logic                    usr_rvalid  ;
-logic                    usr_rready  ;
-//---- USER AW -----------------------
-logic [AXI_IW-1     : 0] usr_awid    ;
-logic [AXI_AW-1     : 0] usr_awaddr  ;
-logic [AXI_LW-1     : 0] usr_awlen   ;
-logic [AXI_SW-1     : 0] usr_awsize  ;
-logic [AXI_BURSTW-1 : 0] usr_awburst ;
-logic                    usr_awvalid ;
-logic                    usr_awready ;
-//---- USER B  -----------------------
-logic [AXI_IW-1     : 0] usr_bid     ;
-logic [AXI_BRESPW-1 : 0] usr_bresp   ;
-logic                    usr_bvalid  ;
-logic                    usr_bready  ;
-//---- USER AR -----------------------
-logic [AXI_IW-1     : 0] usr_arid    ;
-logic [AXI_AW-1     : 0] usr_araddr  ;
-logic [AXI_LW-1     : 0] usr_arlen   ;
-logic [AXI_SW-1     : 0] usr_arsize  ;
-logic [AXI_BURSTW-1 : 0] usr_arburst ;
-logic                    usr_arvalid ;
-logic                    usr_arready ;
-//---- USER R ------------------------
-logic [AXI_IW-1     : 0] usr_rid     ;
-logic [AXI_RRESPW-1 : 0] usr_rresp   ;
+localparam AXID = 1;
 
-// DMA W
-assign usr_wdata  = dma_wdata ;
-assign usr_wstrb  = dma_wstrb ;
-assign usr_wlast  = dma_wlast ;
-assign usr_wvalid = dma_wvalid;
-assign dma_wready = usr_wready;
-// DMA R
-assign dma_rdata  = usr_rdata ;
-assign dma_rlast  = usr_rlast ;
-assign dma_rvalid = usr_rvalid;
-assign usr_rready = dma_rready; 
+//---- ami_w -------------------------
+logic [AXI_IW-1     : 0] ami_awid    ;
+logic [AXI_AW-1     : 0] ami_awaddr  ;
+logic [AXI_LW-1     : 0] ami_awlen   ;
+logic [AXI_SW-1     : 0] ami_awsize  ;
+logic [AXI_BURSTW-1 : 0] ami_awburst ;
+logic                    ami_awvalid ;
+logic                    ami_awready ;
+//---- ami_r -------------------------
+logic [AXI_IW-1     : 0] ami_arid    ;
+logic [AXI_AW-1     : 0] ami_araddr  ;
+logic [AXI_LW-1     : 0] ami_arlen   ;
+logic [AXI_SW-1     : 0] ami_arsize  ;
+logic [AXI_BURSTW-1 : 0] ami_arburst ;
+logic                    ami_arvalid ;
+logic                    ami_arready ;
+
+//---- partion config ----------------
+logic                    parw_ready  ;
+logic                    parr_ready  ;
+//---- partion AR --------------------
+logic [AXI_IW-1     : 0] par_arid    ;
+logic [AXI_AW-1     : 0] par_araddr  ;
+logic [AXI_LW-1     : 0] par_arlen   ;
+logic [AXI_SW-1     : 0] par_arsize  ;
+logic [AXI_BURSTW-1 : 0] par_arburst ;
+logic                    par_arvalid ;
+logic                    par_arready ;
+//---- partion AW --------------------
+logic [AXI_IW-1     : 0] par_awid    ;
+logic [AXI_AW-1     : 0] par_awaddr  ;
+logic [AXI_LW-1     : 0] par_awlen   ;
+logic [AXI_SW-1     : 0] par_awsize  ;
+logic [AXI_BURSTW-1 : 0] par_awburst ;
+logic                    par_awvalid ;
+logic                    par_awready ;
+
+// dma config
+assign dmaw_ready  = bm ? parw_ready : 1'b0;
+assign dmar_ready  = bm ? parr_ready : 1'b0;
+
+// ami_w
+assign ami_awid    = bm ? par_awid    : AXID;
+assign ami_awaddr  = bm ? par_awaddr  : usr_awaddr;
+assign ami_awlen   = bm ? par_awlen   : usr_awlen;
+assign ami_awsize  = bm ? par_awsize  : $clog2(AXI_BYTES);
+assign ami_awburst = bm ? par_awburst : 1;
+assign ami_awvalid = bm ? par_awvalid : usr_awvalid;
+assign par_awready = bm ? ami_awready : 1'b0;
+assign usr_awready = bm ? 1'b0 : ami_awready;
+
+// ami_r
+assign ami_arid    = bm ? par_arid    : AXID;
+assign ami_araddr  = bm ? par_araddr  : usr_araddr;
+assign ami_arlen   = bm ? par_arlen   : usr_arlen;
+assign ami_arsize  = bm ? par_arsize  : $clog2(AXI_BYTES);
+assign ami_arburst = bm ? par_arburst : 1;
+assign ami_arvalid = bm ? par_arvalid : usr_arvalid;
+assign par_arready = bm ? ami_arready : 1'b0;
+assign usr_arready = bm ? 1'b0 : ami_arready;
 
 assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
 assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
-assign usr_bready = 1'b1      ; // always ready to receive B channel output
 
 axlen_partition #(
     //--------- AXI PARAMETERS -------
@@ -205,31 +238,32 @@ axlen_partition #(
     .AXI_BYTESW ( AXI_BYTESW ),
     .BL         ( BL         ),
     .L          ( L          ),
-    .B          ( B          )
+    .B          ( B          ),
+    .AXID       ( AXID       )
 ) arlen_partition (
-    .clk         ( usr_clk                ),
-    .reset_n     ( usr_reset_n            ),
+    .clk         ( usr_clk                     ),
+    .reset_n     ( usr_reset_n & bm            ),
 
-    .dma_valid   ( dmar_valid             ),
-    .dma_ready   ( dmar_ready             ),
-    .dma_sa      ( dmar_sa                ),
-    .dma_len     ( dmar_len               ),
-    .dma_irq_w1c ( dmar_irq_w1c           ),
-    .dma_irq     ( dmar_irq               ),
-    .dma_err     ( dmar_err               ),
+    .dma_valid   ( dmar_valid & bm             ),
+    .dma_ready   ( parr_ready                  ),
+    .dma_sa      ( dmar_sa                     ),
+    .dma_len     ( dmar_len                    ),
+    .dma_irq_w1c ( dmar_irq_w1c                ),
+    .dma_irq     ( dmar_irq                    ),
+    .dma_err     ( dmar_err                    ),
 
-    .axid        ( usr_arid               ),
-    .axaddr      ( usr_araddr             ),
-    .axlen       ( usr_arlen              ),
-    .axsize      ( usr_arsize             ),
-    .axburst     ( usr_arburst            ),
-    .axvalid     ( usr_arvalid            ),
-    .axready     ( usr_arready            ),
+    .axid        ( par_arid                    ),
+    .axaddr      ( par_araddr                  ),
+    .axlen       ( par_arlen                   ),
+    .axsize      ( par_arsize                  ),
+    .axburst     ( par_arburst                 ),
+    .axvalid     ( par_arvalid                 ),
+    .axready     ( par_arready                 ),
 
-    .usr_bid     ( usr_rid                ),
-    .usr_bresp   ( usr_rresp              ),     
-    .usr_bvalid  ( usr_rvalid & usr_rlast ),
-    .usr_bready  ( usr_rready             ) 
+    .usr_bid     ( usr_rid                     ),
+    .usr_bresp   ( usr_rresp                   ),     
+    .usr_bvalid  ( usr_rvalid & usr_rlast & bm ),
+    .usr_bready  ( usr_rready                  ) 
 );
 
 axlen_partition #(
@@ -254,31 +288,32 @@ axlen_partition #(
     .AXI_BYTESW ( AXI_BYTESW ),
     .BL         ( BL         ),
     .L          ( L          ),
-    .B          ( B          )
+    .B          ( B          ),
+    .AXID       ( AXID       )
 ) awlen_partition (
-    .clk         ( usr_clk      ),
-    .reset_n     ( usr_reset_n  ),
+    .clk         ( usr_clk          ),
+    .reset_n     ( usr_reset_n & bm ),
 
-    .dma_valid   ( dmaw_valid   ),
-    .dma_ready   ( dmaw_ready   ),
-    .dma_sa      ( dmaw_sa      ),
-    .dma_len     ( dmaw_len     ),
-    .dma_irq_w1c ( dmaw_irq_w1c ),
-    .dma_irq     ( dmaw_irq     ),
-    .dma_err     ( dmaw_err     ),
+    .dma_valid   ( dmaw_valid & bm  ),
+    .dma_ready   ( parw_ready       ),
+    .dma_sa      ( dmaw_sa          ),
+    .dma_len     ( dmaw_len         ),
+    .dma_irq_w1c ( dmaw_irq_w1c     ),
+    .dma_irq     ( dmaw_irq         ),
+    .dma_err     ( dmaw_err         ),
 
-    .axid        ( usr_awid     ),
-    .axaddr      ( usr_awaddr   ),
-    .axlen       ( usr_awlen    ),
-    .axsize      ( usr_awsize   ),
-    .axburst     ( usr_awburst  ),
-    .axvalid     ( usr_awvalid  ),
-    .axready     ( usr_awready  ), 
+    .axid        ( par_awid         ),
+    .axaddr      ( par_awaddr       ),
+    .axlen       ( par_awlen        ),
+    .axsize      ( par_awsize       ),
+    .axburst     ( par_awburst      ),
+    .axvalid     ( par_awvalid      ),
+    .axready     ( par_awready      ), 
 
-    .usr_bid     ( usr_bid      ),
-    .usr_bresp   ( usr_bresp    ),     
-    .usr_bvalid  ( usr_bvalid   ),
-    .usr_bready  ( usr_bready   ) 
+    .usr_bid     ( usr_bid          ),
+    .usr_bresp   ( usr_bresp        ),     
+    .usr_bvalid  ( usr_bvalid & bm  ),
+    .usr_bready  ( usr_bready       ) 
 );
 
 ami_w #(
@@ -305,7 +340,26 @@ ami_w #(
     .L          ( L          ),
     .B          ( B          )
 ) w_inf (
-    .*
+    .*,
+
+    .usr_awid    ( ami_awid    ),
+    .usr_awaddr  ( ami_awaddr  ),
+    .usr_awlen   ( ami_awlen   ),
+    .usr_awsize  ( ami_awsize  ),
+    .usr_awburst ( ami_awburst ),
+    .usr_awvalid ( ami_awvalid ),
+    .usr_awready ( ami_awready ),
+
+    .usr_wdata   ( usr_wdata   ),
+    .usr_wstrb   ( usr_wstrb   ),
+    .usr_wlast   ( usr_wlast   ),
+    .usr_wvalid  ( usr_wvalid  ),
+    .usr_wready  ( usr_wready  ),
+
+    .usr_bid     ( usr_bid     ),
+    .usr_bresp   ( usr_bresp   ),
+    .usr_bvalid  ( usr_bvalid  ),
+    .usr_bready  ( usr_bready  ) 
 );
 
 ami_r #(
@@ -332,7 +386,22 @@ ami_r #(
     .L          ( L          ),
     .B          ( B          )
 ) r_inf (
-    .*
+    .*,
+
+    .usr_arid    ( ami_arid    ),
+    .usr_araddr  ( ami_araddr  ),
+    .usr_arlen   ( ami_arlen   ),
+    .usr_arsize  ( ami_arsize  ),
+    .usr_arburst ( ami_arburst ),
+    .usr_arvalid ( ami_arvalid ),
+    .usr_arready ( ami_arready ),
+
+    .usr_rid     ( usr_rid     ),
+    .usr_rdata   ( usr_rdata   ),
+    .usr_rresp   ( usr_rresp   ),
+    .usr_rlast   ( usr_rlast   ),
+    .usr_rvalid  ( usr_rvalid  ),
+    .usr_rready  ( usr_rready  ) 
 );
 
 // --debug

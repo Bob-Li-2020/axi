@@ -30,7 +30,8 @@ module axlen_partition
     AXI_BYTESW = $clog2(AXI_BYTES+1) ,  
     BL         = 16                  , // default burst length
     L          = $clog2(AXI_BYTES)   ,
-    B          = $clog2(BL)+L 
+    B          = $clog2(BL)+L        ,
+    AXID       = 1
 )(
     input  logic                    clk         ,
     input  logic                    reset_n     ,
@@ -86,11 +87,11 @@ assign len_we       = st_cur==IDLE && st_nxt==BUSY;
 assign dma_ready    = st_cur==IDLE  ;
 assign dma_irq      = dma_done      ;
 assign dma_err[3]   = 1'b0          ; // no timeout 
-assign axid         = AXI_IW'(1)    ;
+assign axid         = AXID          ;
 assign axaddr       = {addr[AXI_AW-1:L], L'(0)};
 assign axlen        = min2_len(axlen_prompt, len);
-assign axsize       = AXI_SW'($clog2(AXI_BYTES));
-assign axburst      = AXI_BURSTW'(1);
+assign axsize       = $clog2(AXI_BYTES);
+assign axburst      = 1;
 assign axvalid      = st_cur==BUSY  ;
 
 assign axlen_prompt = {{(AXI_LW-(B-L)){1'b0}}, ~addr[B-1:L]};
