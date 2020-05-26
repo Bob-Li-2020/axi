@@ -43,7 +43,7 @@ module axlen_partition
     input  logic                    dma_irq_w1c , // dma interrupt write 1 clear
     output logic                    dma_irq     , // dma interrupt
     output logic [3            : 0] dma_err     ,
-    //---- AXI AW/AR CHANNEL ----------------------
+    //---- AXI AW/AR CHANNEL --------------------
     output logic [AXI_IW-1     : 0] axid        ,
     output logic [AXI_AW-1     : 0] axaddr      ,
     output logic [AXI_LW-1     : 0] axlen       ,

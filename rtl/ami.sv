@@ -47,7 +47,8 @@ module ami //ami: Axi Master Interface
     AXI_BYTESW = $clog2(AXI_BYTES+1) ,
     BL         = 16                  , // default burst length
     L          = $clog2(AXI_BYTES)   ,
-    B          = $clog2(BL)+L 
+    B          = $clog2(BL)+L        ,
+    AXID       = 1
 )(
     //---- AXI GLOBAL ----------------------------
     input  logic                    ACLK         ,
@@ -149,8 +150,6 @@ module ami //ami: Axi Master Interface
 
 timeunit 1ns;
 timeprecision 1ps;
-
-localparam AXID = 1;
 
 //---- ami_w -------------------------
 logic [AXI_IW-1     : 0] ami_awid    ;
