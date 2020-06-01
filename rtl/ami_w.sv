@@ -2,34 +2,24 @@
 //-- DATE: 2020.3
 //-- DESCRIPTION: AXI MASTER INTERFACE.WRITE. This module includes:
 //--              1. usr_clk/ACLK clock domain cross;
-//--              2. Outstanding control;
-//--              3. WLAST control;
-//--              4. AW/W channel alignment(AW channel precedes W channel).
+//--              2. AXI outstanding control;
+//--              3. AW/W channel alignment(AW channel precedes W channel).
 
 module ami_w // ami_w: Axi Master Interface Write
 #(
     //--------- AXI PARAMETERS -------
     AXI_DW     = 128                 , // AXI DATA    BUS WIDTH
-    AXI_AW     = 32                  , // AXI ADDRESS BUS WIDTH(MUST <= 32)
+    AXI_AW     = 32                  , // AXI ADDRESS BUS WIDTH(MUST >= 32)
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
-    AXI_BURSTW = 2                   , // AXI AWBURST BITS WIDTH
-    AXI_BRESPW = 2                   , // AXI BRESP   BITS WIDTH
-    AXI_RRESPW = 2                   , // AXI RRESP   BITS WIDTH
     //--------- AMI CONFIGURE --------
     AMI_OD     = 4                   , // AMI OUTSTANDING DEPTH
-    AMI_AD     = 4                   , // AMI AW/AR CHANNEL BUFFER DEPTH
-    AMI_RD     = 64                  , // AMI R CHANNEL BUFFER DEPTH
-    AMI_WD     = 64                  , // AMI W CHANNEL BUFFER DEPTH
-    AMI_BD     = 4                   , // AMI B CHANNEL BUFFER DEPTH
+    AMI_AD     = 8                   , // AMI AW/AR CHANNEL FIFO DEPTH
+    AMI_XD     = 16                  , // AMI W/R   CHANNEL FIFO DEPTH
+    AMI_BD     = 8                   , // AMI B     CHANNEL FIFO DEPTH
     //-------- DERIVED PARAMETERS ----
-    AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
-    AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1) ,
-    BL         = 16                  , // default burst length
-    L          = $clog2(AXI_BYTES)   ,
-    B          = $clog2(BL)+L 
+    AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
     //---- AXI GLOBAL ---------------------------
     input  logic                    ACLK        ,
@@ -39,7 +29,7 @@ module ami_w // ami_w: Axi Master Interface Write
     output logic [AXI_AW-1     : 0] AWADDR      ,
     output logic [AXI_LW-1     : 0] AWLEN       ,
     output logic [AXI_SW-1     : 0] AWSIZE      ,
-    output logic [AXI_BURSTW-1 : 0] AWBURST     ,
+    output logic [1            : 0] AWBURST     ,
     output logic                    AWVALID     ,
     input  logic                    AWREADY     ,
     //---- AXI W --------------------------------
@@ -50,7 +40,7 @@ module ami_w // ami_w: Axi Master Interface Write
     input  logic                    WREADY      ,
     //---- AXI B --------------------------------
     input  logic [AXI_IW-1     : 0] BID         ,
-    input  logic [AXI_BRESPW-1 : 0] BRESP       ,
+    input  logic [1            : 0] BRESP       ,
     input  logic                    BVALID      ,
     output logic                    BREADY      ,
     //---- USER GLOBAL --------------------------
@@ -61,7 +51,7 @@ module ami_w // ami_w: Axi Master Interface Write
     input  logic [AXI_AW-1     : 0] usr_awaddr  ,
     input  logic [AXI_LW-1     : 0] usr_awlen   ,
     input  logic [AXI_SW-1     : 0] usr_awsize  ,
-    input  logic [AXI_BURSTW-1 : 0] usr_awburst ,
+    input  logic [1            : 0] usr_awburst ,
     input  logic                    usr_awvalid ,
     output logic                    usr_awready ,
     //---- USER W  ------------------------------
@@ -72,7 +62,7 @@ module ami_w // ami_w: Axi Master Interface Write
     output logic                    usr_wready  ,
     //---- USER B  ------------------------------
     output logic [AXI_IW-1     : 0] usr_bid     ,
-    output logic [AXI_BRESPW-1 : 0] usr_bresp   ,
+    output logic [1            : 0] usr_bresp   ,
     output logic                    usr_bvalid  ,
     input  logic                    usr_bready   
 );
@@ -80,12 +70,12 @@ module ami_w // ami_w: Axi Master Interface Write
 timeunit 1ns;
 timeprecision 1ps;
 
-localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW, // aw_buffer DW
-           WFF_DW = AXI_DW + AXI_WSTRBW + 1,                        //  w_buffer DW(+1~wlast)
-           BFF_DW = AXI_IW + AXI_BRESPW,                            //  b_buffer DW
+localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + 2, // aw_buffer DW(+2~AXBURST)
+           WFF_DW = AXI_DW + AXI_WSTRBW + 1,               //  w_buffer DW(+1~wlast)
+           BFF_DW = AXI_IW + 2,                            //  b_buffer DW(+2~BRESP)
            LFF_DW = AXI_LW,
            AFF_AW = $clog2(AMI_AD), // aw_buffer AW
-           WFF_AW = $clog2(AMI_WD), //  w_buffer AW
+           WFF_AW = $clog2(AMI_XD), //  w_buffer AW
            BFF_AW = $clog2(AMI_BD), //  b_buffer AW
            LFF_AW = AFF_AW,
            OUT_AW = $clog2(AMI_OD+1); // outstanding bits width
@@ -111,7 +101,7 @@ logic [AXI_IW-1     : 0] aq_id        ;
 logic [AXI_AW-1     : 0] aq_addr      ;
 logic [AXI_LW-1     : 0] aq_len       ;
 logic [AXI_SW-1     : 0] aq_size      ;
-logic [AXI_BURSTW-1 : 0] aq_burst     ;
+logic [1            : 0] aq_burst     ;
 
 //---  w fifo signals -----------------
 logic                    wff_wreset_n ;
@@ -146,7 +136,7 @@ logic [BFF_AW       : 0] bff_rcnt     ;
 logic [BFF_DW-1     : 0] bff_d        ;
 logic [BFF_DW-1     : 0] bff_q        ;
 logic [AXI_IW-1     : 0] bq_bid       ;
-logic [AXI_BRESPW-1 : 0] bq_bresp     ;
+logic [1            : 0] bq_bresp     ;
 
 //---  awlen fifo signals -------------
 logic                    lff_wreset_n ;
