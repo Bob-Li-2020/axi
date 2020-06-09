@@ -11,21 +11,15 @@ module asi_r
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
-    AXI_BURSTW = 2                   , // AXI AWBURST BITS WIDTH
-    AXI_BRESPW = 2                   , // AXI BRESP   BITS WIDTH
-    AXI_RRESPW = 2                   , // AXI RRESP   BITS WIDTH
     //--------- ASI CONFIGURE --------
-    ASI_AD     = 4                   , // ASI AW/AR CHANNEL BUFFER DEPTH
-    ASI_RD     = 64                  , // ASI R CHANNEL BUFFER DEPTH
-    ASI_WD     = 64                  , // ASI W CHANNEL BUFFER DEPTH
-    ASI_BD     = 4                   , // ASI B CHANNEL BUFFER DEPTH
+    ASI_AD     = 8                   , // ASI AW/AR CHANNEL BUFFER DEPTH
+    ASI_XD     = 16                  , // ASI R CHANNEL BUFFER DEPTH
+    ASI_BD     = 8                   , // ASI B CHANNEL BUFFER DEPTH
     ASI_ARB    = 0                   , // 1-GRANT READ WITH HIGHER PRIORITY; 0-GRANT WRITE WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE
     //-------- DERIVED PARAMETERS ----
-    AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
-    AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
     //---- AXI GLOBAL SIGNALS -----------------------
     input  logic                    ACLK            ,
@@ -35,13 +29,13 @@ module asi_r
     input  logic [AXI_AW-1     : 0] ARADDR          ,
     input  logic [AXI_LW-1     : 0] ARLEN           ,
     input  logic [AXI_SW-1     : 0] ARSIZE          ,
-    input  logic [AXI_BURSTW-1 : 0] ARBURST         ,
+    input  logic [1 : 0] ARBURST         ,
     input  logic                    ARVALID         ,
     output logic                    ARREADY         ,
     //---- READ DATA CHANNEL ------------------------
     output logic [AXI_IW-1     : 0] RID             ,
     output logic [AXI_DW-1     : 0] RDATA           ,
-    output logic [AXI_RRESPW-1 : 0] RRESP           ,
+    output logic [1 : 0] RRESP           ,
     output logic                    RLAST           ,
     output logic                    RVALID          ,
     input  logic                    RREADY          ,
@@ -52,7 +46,7 @@ module asi_r
     output logic [AXI_IW-1     : 0] usr_rid         ,
     output logic [AXI_LW-1     : 0] usr_rlen        ,
     output logic [AXI_SW-1     : 0] usr_rsize       ,
-    output logic [AXI_BURSTW-1 : 0] usr_rburst      ,
+    output logic [1 : 0] usr_rburst      ,
     //R CHANNEL
     output logic [AXI_AW-1     : 0] usr_raddr       ,
     output logic                    usr_re          ,
@@ -68,15 +62,15 @@ module asi_r
 timeunit 1ns;
 timeprecision 1ps;
 
-localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW,
-           RFF_DW = AXI_IW + AXI_DW + AXI_RRESPW + 1,
+localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + 2, // +2~AXBURST
+           RFF_DW = AXI_IW + AXI_DW + 2 + 1, // +2~RESPW; +1~RLAST
            AFF_AW = $clog2(ASI_AD),
-           RFF_AW = $clog2(ASI_RD);
+           RFF_AW = $clog2(ASI_XD);
 
-localparam [AXI_BURSTW-1 : 0] BT_FIXED    = 0;
-localparam [AXI_BURSTW-1 : 0] BT_INCR     = 1;
-localparam [AXI_BURSTW-1 : 0] BT_WRAP     = 2;
-localparam [AXI_BURSTW-1 : 0] BT_RESERVED = 3;
+localparam [1 : 0] BT_FIXED    = 0;
+localparam [1 : 0] BT_INCR     = 1;
+localparam [1 : 0] BT_WRAP     = 2;
+localparam [1 : 0] BT_RESERVED = 3;
 
 // BP_FIRST: transfer the first transfer
 // BP_BURST: transfer the rest  transfer(s)
@@ -107,12 +101,12 @@ logic [AXI_IW-1     : 0] aq_id            ;
 logic [AXI_AW-1     : 0] aq_addr          ;
 logic [AXI_LW-1     : 0] aq_len           ;
 logic [AXI_SW-1     : 0] aq_size          ;
-logic [AXI_BURSTW-1 : 0] aq_burst         ;
+logic [1 : 0] aq_burst         ;
 logic [AXI_IW-1     : 0] aq_id_latch      ;
 logic [AXI_AW-1     : 0] aq_addr_latch    ;
 logic [AXI_LW-1     : 0] aq_len_latch     ;
 logic [AXI_SW-1     : 0] aq_size_latch    ;
-logic [AXI_BURSTW-1 : 0] aq_burst_latch   ;
+logic [1 : 0] aq_burst_latch   ;
 
 //------ r fifo signals -------------------
 logic                    rff_wreset_n     ;
@@ -130,12 +124,12 @@ logic [RFF_DW-1     : 0] rff_d            ;
 logic [RFF_DW-1     : 0] rff_q            ;
 logic [AXI_IW-1     : 0] rq_id            ;
 logic [AXI_DW-1     : 0] rq_data          ;
-logic [AXI_RRESPW-1 : 0] rq_resp          ;
+logic [1 : 0] rq_resp          ;
 logic                    rq_last          ;
 logic                    rff_wafull2      ;
 
 //------ burst addresses ------------------
-logic [AXI_BYTESW-1 : 0] burst_addr_inc   ;
+logic [AXI_WSTRBW : 0] burst_addr_inc   ;
 logic [AXI_AW-0     : 0] burst_addr_nxt   ;
 logic [AXI_AW-0     : 0] burst_addr_nxt_b ; // bounded to 4KB 
 logic [AXI_AW-1     : 0] burst_addr       ;
@@ -147,13 +141,13 @@ logic [AXI_AW-1     : 0] start_addr_mask  ;
 logic [AXI_AW-1     : 0] aligned_addr     ;
 
 //------ wait state signals ---------------
-logic [AXI_RRESPW-1 : 0] usr_rresp_ws     ;
+logic [1 : 0] usr_rresp_ws     ;
 logic [AXI_IW-1     : 0] usr_rid_ws       ;
 
 //------ other signals --------------------
 logic                    error_size       ;
 wire                     error_w4KB       ;
-logic [AXI_RRESPW-1 : 0] usr_rresp        ; // along with <usr_re>
+logic [1 : 0] usr_rresp        ; // along with <usr_re>
 
 // output
 assign ARREADY        = ~aff_wfull       ;
@@ -198,7 +192,7 @@ assign rff_d          = { usr_rid_ws, usr_rdata, usr_rresp_ws, burst_last_ws };
 assign { rq_id, rq_data, rq_resp, rq_last } = rff_q;
 
 // burst
-assign burst_addr_inc = usr_rburst==BT_FIXED ? '0 : {{(AXI_BYTESW-1){1'b0}},1'b1}<<usr_rsize;
+assign burst_addr_inc = usr_rburst==BT_FIXED ? '0 : {{AXI_WSTRBW{1'b0}},1'b1}<<usr_rsize;
 assign burst_addr_nxt = st_cur==BP_FIRST ? (burst_addr_inc+{1'b0,aligned_addr}) : (st_cur==BP_BURST ? (!rff_wafull2 ? burst_addr_inc+{1'b0,burst_addr} : {1'b0,burst_addr}) : 'x);
 assign start_addr     = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
 assign aligned_addr   = start_addr_mask & start_addr;
@@ -218,13 +212,13 @@ endgenerate
 generate 
     if(SLV_WS==0) begin: WS0
         assign usr_rvalid  = usr_re            ;
-        assign rff_wafull2 = rff_wcnt >= ASI_RD;
+        assign rff_wafull2 = rff_wcnt >= ASI_XD;
     end: WS0
     else begin: WS_N
         logic [SLV_WS : 0] usr_re_ff   ;
         logic [RFF_AW : 0] rff_wcnt_af ; // rff wcnt almost full
         assign usr_rvalid  = usr_re_ff[SLV_WS-1];
-        assign rff_wafull2 = rff_wcnt_af >= ASI_RD;
+        assign rff_wafull2 = rff_wcnt_af >= ASI_XD;
         always_ff @(posedge usr_clk or negedge usr_reset_n)
             if(!usr_reset_n)
                 usr_re_ff <= '0;
@@ -240,12 +234,12 @@ generate
 endgenerate
 
 // others
-assign error_size = (usr_rsize > $clog2(AXI_BYTES)) | usr_rsize_error;
+assign error_size = (usr_rsize > $clog2(AXI_DW/8)) | usr_rsize_error;
 assign usr_rresp  = { error_size | error_w4KB, 1'b0 };
 
 always_comb begin
-    start_addr_mask = ('1)<<($clog2(AXI_BYTES)); // default align with AXI_DATA_BUS_BYTES
-	for(int i=0;i<=($clog2(AXI_BYTES));i++) begin
+    start_addr_mask = ('1)<<($clog2(AXI_DW/8)); // default align with AXI_DATA_BUS_BYTES
+	for(int i=0;i<=($clog2(AXI_DW/8));i++) begin
 		if(i==usr_rsize) begin
             start_addr_mask = ('1)<<i;
 		end
@@ -274,7 +268,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         burst_addr <= '0;
     end
     else if(st_cur==BP_FIRST) begin
-        burst_cc   <= st_nxt==BP_BURST ? {{(AXI_BURSTW-1){1'b0}},1'b1} : 'x;
+        burst_cc   <= st_nxt==BP_BURST ? {{(AXI_LW-1){1'b0}},1'b1} : 'x;
         burst_addr <= st_nxt==BP_BURST ? burst_addr_nxt_b[0 +: AXI_AW] : 'x;
     end
     else if(st_cur==BP_BURST) begin
@@ -295,8 +289,8 @@ generate
             {usr_rresp_ws, burst_last_ws, usr_rid_ws} <= {usr_rresp, burst_last, usr_rid};
     end: INFO_WS1
     else begin: INFO_WSN
-        wire  [AXI_RRESPW+1+AXI_IW-1 : 0] rfd_sigs = {usr_rresp, burst_last, usr_rid};
-        logic [AXI_RRESPW+1+AXI_IW-1 : 0] rfd_sigs_ff[SLV_WS] ;
+        wire  [1+1+AXI_IW-1 : 0] rfd_sigs = {usr_rresp, burst_last, usr_rid};
+        logic [1+1+AXI_IW-1 : 0] rfd_sigs_ff[SLV_WS] ;
         always_ff @(posedge clk) begin
             rfd_sigs_ff[0] <= rfd_sigs;
             for(int i=1;i<SLV_WS;i++) 

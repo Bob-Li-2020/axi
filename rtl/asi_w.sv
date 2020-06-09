@@ -35,7 +35,7 @@ module asi_w
     input  logic [AXI_AW-1     : 0] AWADDR          ,
     input  logic [AXI_LW-1     : 0] AWLEN           ,
     input  logic [AXI_SW-1     : 0] AWSIZE          ,
-    input  logic [AXI_BURSTW-1 : 0] AWBURST         ,
+    input  logic [1 : 0] AWBURST         ,
     input  logic                    AWVALID         ,
     output logic                    AWREADY         ,
     //---- AXI DATA WRITE SIGNALS -------------------
@@ -56,7 +56,7 @@ module asi_w
     output logic [AXI_IW-1     : 0] usr_wid         ,
     output logic [AXI_LW-1     : 0] usr_wlen        ,
     output logic [AXI_SW-1     : 0] usr_wsize       ,
-    output logic [AXI_BURSTW-1 : 0] usr_wburst      ,
+    output logic [1 : 0] usr_wburst      ,
     //W CHANNEL
     output logic [AXI_AW-1     : 0] usr_waddr       ,
     output logic [AXI_DW-1     : 0] usr_wdata       ,
@@ -73,17 +73,17 @@ module asi_w
 timeunit 1ns;
 timeprecision 1ps;
 
-localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + AXI_BURSTW,
+localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + 1, // +1~AXBURSTW
            WFF_DW = AXI_DW + AXI_WSTRBW + 1,
            BFF_DW = AXI_IW + AXI_BRESPW,
            AFF_AW = $clog2(ASI_AD),
            WFF_AW = $clog2(ASI_WD),
            BFF_AW = $clog2(ASI_BD);
 
-localparam [AXI_BURSTW-1 : 0] BT_FIXED     = 0;
-localparam [AXI_BURSTW-1 : 0] BT_INCR      = 1;
-localparam [AXI_BURSTW-1 : 0] BT_WRAP      = 2;
-localparam [AXI_BURSTW-1 : 0] BT_RESERVED  = 3;
+localparam [1 : 0] BT_FIXED     = 0;
+localparam [1 : 0] BT_INCR      = 1;
+localparam [1 : 0] BT_WRAP      = 2;
+localparam [1 : 0] BT_RESERVED  = 3;
 
 // BP_FIRST: transfer the first transfer
 // BP_BURST: transfer the rest  transfer(s)

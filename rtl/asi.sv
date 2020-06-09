@@ -31,14 +31,11 @@ module asi
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
-    AXI_BURSTW = 2                   , // AXI AWBURST BITS WIDTH
-    AXI_BRESPW = 2                   , // AXI BRESP   BITS WIDTH
-    AXI_RRESPW = 2                   , // AXI RRESP   BITS WIDTH
     //--------- ASI CONFIGURE --------
-    ASI_AD     = 16                  , // ASI AW/AR CHANNEL BUFFER DEPTH
+    ASI_AD     = 8                  , // ASI AW/AR CHANNEL BUFFER DEPTH
     ASI_RD     = 16                  , // ASI R CHANNEL BUFFER DEPTH
     ASI_WD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
-    ASI_BD     = 16                  , // ASI B CHANNEL BUFFER DEPTH
+    ASI_BD     = 8                  , // ASI B CHANNEL BUFFER DEPTH
     ASI_ARB    = 0                   , // 0-GRANT WRITE WITH HIGHER PRIORITY; otherwise-GRANT READ WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE
@@ -55,7 +52,7 @@ module asi
     input  logic [AXI_AW-1     : 0] AWADDR      ,
     input  logic [AXI_LW-1     : 0] AWLEN       ,
     input  logic [AXI_SW-1     : 0] AWSIZE      ,
-    input  logic [AXI_BURSTW-1 : 0] AWBURST     ,
+    input  logic [1 : 0] AWBURST     ,
     input  logic                    AWVALID     ,
     output logic                    AWREADY     ,
     input  logic                    AWLOCK      , // NO LOADS 
@@ -71,7 +68,7 @@ module asi
     output logic                    WREADY      ,
     //---- AXI WRITE RESPONSE -------------------
     output logic [AXI_IW-1     : 0] BID         ,
-    output logic [AXI_BRESPW-1 : 0] BRESP       ,
+    output logic [1 : 0] BRESP       ,
     output logic                    BVALID      ,
     input  logic                    BREADY      ,
     //---- AXI ADDRESS READ ---------------------
@@ -79,7 +76,7 @@ module asi
     input  logic [AXI_AW-1     : 0] ARADDR      ,
     input  logic [AXI_LW-1     : 0] ARLEN       ,
     input  logic [AXI_SW-1     : 0] ARSIZE      ,
-    input  logic [AXI_BURSTW-1 : 0] ARBURST     ,
+    input  logic [1 : 0] ARBURST     ,
     input  logic                    ARVALID     ,
     output logic                    ARREADY     ,
     input  logic                    ARLOCK      , // NO LOADS 
@@ -90,7 +87,7 @@ module asi
     //---- AXI READ DATA ------------------------
     output logic [AXI_IW-1     : 0] RID         ,
     output logic [AXI_DW-1     : 0] RDATA       ,
-    output logic [AXI_RRESPW-1 : 0] RRESP       ,
+    output logic [1 : 0] RRESP       ,
     output logic                    RLAST       ,
     output logic                    RVALID      ,
     input  logic                    RREADY      ,
@@ -113,7 +110,7 @@ enum logic [1:0] { ARB_IDLE=2'b00, ARB_READ, ARB_WRITE } st_cur, st_nxt; // arbi
 logic [AXI_IW-1     : 0] usr_wid         ; // output 
 logic [AXI_LW-1     : 0] usr_wlen        ; // output 
 logic [AXI_SW-1     : 0] usr_wsize       ; // output 
-logic [AXI_BURSTW-1 : 0] usr_wburst      ; // output 
+logic [1 : 0] usr_wburst      ; // output 
 //W CHANNEL
 logic [AXI_AW-1     : 0] usr_waddr       ; // output 
 logic [AXI_DW-1     : 0] usr_wdata       ; // output 
@@ -129,7 +126,7 @@ logic                    usr_wsize_error ; // input. unsupported transfer size
 logic [AXI_IW-1     : 0] usr_rid         ; // output  
 logic [AXI_LW-1     : 0] usr_rlen        ; // output 
 logic [AXI_SW-1     : 0] usr_rsize       ; // output 
-logic [AXI_BURSTW-1 : 0] usr_rburst      ; // output 
+logic [1 : 0] usr_rburst      ; // output 
 //R CHANNEL
 logic [AXI_AW-1     : 0] usr_raddr       ; // output  
 logic                    usr_re          ; // output 
@@ -184,9 +181,6 @@ asi_w #(
 .AXI_IW     ( AXI_IW     ),
 .AXI_LW     ( AXI_LW     ),
 .AXI_SW     ( AXI_SW     ),
-.AXI_BURSTW ( AXI_BURSTW ),
-.AXI_BRESPW ( AXI_BRESPW ),
-.AXI_RRESPW ( AXI_RRESPW ),
 //--------- ASI CONFIGURE --------
 .ASI_AD     ( ASI_AD     ),
 .ASI_RD     ( ASI_RD     ),
@@ -210,9 +204,6 @@ asi_r #(
 .AXI_IW     ( AXI_IW     ),
 .AXI_LW     ( AXI_LW     ),
 .AXI_SW     ( AXI_SW     ),
-.AXI_BURSTW ( AXI_BURSTW ),
-.AXI_BRESPW ( AXI_BRESPW ),
-.AXI_RRESPW ( AXI_RRESPW ),
 //--------- ASI CONFIGURE --------
 .ASI_AD     ( ASI_AD     ),
 .ASI_RD     ( ASI_RD     ),
