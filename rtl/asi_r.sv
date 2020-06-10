@@ -13,50 +13,50 @@ module asi_r
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
     //--------- ASI CONFIGURE --------
     ASI_AD     = 8                   , // ASI AW/AR CHANNEL BUFFER DEPTH
-    ASI_XD     = 16                  , // ASI R CHANNEL BUFFER DEPTH
+    ASI_XD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
     ASI_BD     = 8                   , // ASI B CHANNEL BUFFER DEPTH
-    ASI_ARB    = 0                   , // 1-GRANT READ WITH HIGHER PRIORITY; 0-GRANT WRITE WITH HIGHER PRIORITY
+    ASI_ARB    = 0                   , // 0-GRANT WRITE WITH HIGHER PRIORITY; otherwise-GRANT READ WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE
     //-------- DERIVED PARAMETERS ----
     AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
-    //---- AXI GLOBAL SIGNALS -----------------------
-    input  logic                    ACLK            ,
-    input  logic                    ARESETn         ,
-    //---- READ ADDRESS CHANNEL ---------------------
-    input  logic [AXI_IW-1     : 0] ARID            ,
-    input  logic [AXI_AW-1     : 0] ARADDR          ,
-    input  logic [AXI_LW-1     : 0] ARLEN           ,
-    input  logic [AXI_SW-1     : 0] ARSIZE          ,
-    input  logic [1 : 0] ARBURST         ,
-    input  logic                    ARVALID         ,
-    output logic                    ARREADY         ,
-    //---- READ DATA CHANNEL ------------------------
-    output logic [AXI_IW-1     : 0] RID             ,
-    output logic [AXI_DW-1     : 0] RDATA           ,
-    output logic [1 : 0] RRESP           ,
-    output logic                    RLAST           ,
-    output logic                    RVALID          ,
-    input  logic                    RREADY          ,
-    //---- USER LOGIC SIGNALS -----------------------
-    input  logic                    usr_clk         ,
-    input  logic                    usr_reset_n     ,
+    //---- AXI GLOBAL SIGNALS -------------------
+    input  logic                ACLK            ,
+    input  logic                ARESETn         ,
+    //---- READ ADDRESS CHANNEL -----------------
+    input  logic [AXI_IW-1 : 0] ARID            ,
+    input  logic [AXI_AW-1 : 0] ARADDR          ,
+    input  logic [AXI_LW-1 : 0] ARLEN           ,
+    input  logic [AXI_SW-1 : 0] ARSIZE          ,
+    input  logic [1        : 0] ARBURST         ,
+    input  logic                ARVALID         ,
+    output logic                ARREADY         ,
+    //---- READ DATA CHANNEL --------------------
+    output logic [AXI_IW-1 : 0] RID             ,
+    output logic [AXI_DW-1 : 0] RDATA           ,
+    output logic [1        : 0] RRESP           ,
+    output logic                RLAST           ,
+    output logic                RVALID          ,
+    input  logic                RREADY          ,
+    //---- USER LOGIC SIGNALS -------------------
+    input  logic                usr_clk         ,
+    input  logic                usr_reset_n     ,
     //AR CHANNEL
-    output logic [AXI_IW-1     : 0] usr_rid         ,
-    output logic [AXI_LW-1     : 0] usr_rlen        ,
-    output logic [AXI_SW-1     : 0] usr_rsize       ,
-    output logic [1 : 0] usr_rburst      ,
+    output logic [AXI_IW-1 : 0] usr_rid         ,
+    output logic [AXI_LW-1 : 0] usr_rlen        ,
+    output logic [AXI_SW-1 : 0] usr_rsize       ,
+    output logic [1        : 0] usr_rburst      ,
     //R CHANNEL
-    output logic [AXI_AW-1     : 0] usr_raddr       ,
-    output logic                    usr_re          ,
-    output logic                    usr_rlast       ,
-    input  logic [AXI_DW-1     : 0] usr_rdata       ,
+    output logic [AXI_AW-1 : 0] usr_raddr       ,
+    output logic                usr_re          ,
+    output logic                usr_rlast       ,
+    input  logic [AXI_DW-1 : 0] usr_rdata       ,
     //ARBITER SIGNALS
-    output logic                    usr_rrequest    , // arbiter read request
-    input  logic                    usr_rgrant      , // arbiter read grant
+    output logic                usr_rrequest    , // arbiter read request
+    input  logic                usr_rgrant      , // arbiter read grant
     //ERROR FLAGS
-    input  logic                    usr_rsize_error   // unsupported transfer size
+    input  logic                usr_rsize_error   // unsupported transfer size
 );
 
 timeunit 1ns;
@@ -77,77 +77,77 @@ localparam [1 : 0] BT_RESERVED = 3;
 // BP_IDLE : do nothing
 enum logic [1:0] { BP_FIRST=2'b00, BP_BURST, BP_IDLE } st_cur, st_nxt; 
 
-//------ easy signals ---------------------
-wire                     usr_rvalid       ;
-wire                     clk              ;
-wire                     rst_n            ;
-wire                     aff_rvalid       ;
-wire                     aff_rready       ;
+//------ easy signals -------------------
+wire                   usr_rvalid       ;
+wire                   clk              ;
+wire                   rst_n            ;
+wire                   aff_rvalid       ;
+wire                   aff_rready       ;
 
-//------ ar fifo signals ------------------
-logic                    aff_wreset_n     ;
-logic                    aff_rreset_n     ;
-logic                    aff_wclk         ;
-logic                    aff_rclk         ;
-logic                    aff_we           ;
-logic                    aff_re           ;
-logic                    aff_wfull        ;
-logic                    aff_rempty       ;
-logic [AFF_AW       : 0] aff_wcnt         ;
-logic [AFF_AW       : 0] aff_rcnt         ;
-logic [AFF_DW-1     : 0] aff_d            ;
-logic [AFF_DW-1     : 0] aff_q            ;
-logic [AXI_IW-1     : 0] aq_id            ;
-logic [AXI_AW-1     : 0] aq_addr          ;
-logic [AXI_LW-1     : 0] aq_len           ;
-logic [AXI_SW-1     : 0] aq_size          ;
-logic [1 : 0] aq_burst         ;
-logic [AXI_IW-1     : 0] aq_id_latch      ;
-logic [AXI_AW-1     : 0] aq_addr_latch    ;
-logic [AXI_LW-1     : 0] aq_len_latch     ;
-logic [AXI_SW-1     : 0] aq_size_latch    ;
-logic [1 : 0] aq_burst_latch   ;
+//------ ar fifo signals ----------------
+logic                  aff_wreset_n     ;
+logic                  aff_rreset_n     ;
+logic                  aff_wclk         ;
+logic                  aff_rclk         ;
+logic                  aff_we           ;
+logic                  aff_re           ;
+logic                  aff_wfull        ;
+logic                  aff_rempty       ;
+logic [AFF_AW     : 0] aff_wcnt         ;
+logic [AFF_AW     : 0] aff_rcnt         ;
+logic [AFF_DW-1   : 0] aff_d            ;
+logic [AFF_DW-1   : 0] aff_q            ;
+logic [AXI_IW-1   : 0] aq_id            ;
+logic [AXI_AW-1   : 0] aq_addr          ;
+logic [AXI_LW-1   : 0] aq_len           ;
+logic [AXI_SW-1   : 0] aq_size          ;
+logic [1          : 0] aq_burst         ;
+logic [AXI_IW-1   : 0] aq_id_latch      ;
+logic [AXI_AW-1   : 0] aq_addr_latch    ;
+logic [AXI_LW-1   : 0] aq_len_latch     ;
+logic [AXI_SW-1   : 0] aq_size_latch    ;
+logic [1          : 0] aq_burst_latch   ;
 
-//------ r fifo signals -------------------
-logic                    rff_wreset_n     ;
-logic                    rff_rreset_n     ;
-logic                    rff_wclk         ;
-logic                    rff_rclk         ;
-logic                    rff_we           ;
-logic                    rff_re           ;
-logic                    rff_wfull        ;
-logic                    rff_wafull       ;
-logic                    rff_rempty       ;
-logic [RFF_AW       : 0] rff_wcnt         ;
-logic [RFF_AW       : 0] rff_rcnt         ;
-logic [RFF_DW-1     : 0] rff_d            ;
-logic [RFF_DW-1     : 0] rff_q            ;
-logic [AXI_IW-1     : 0] rq_id            ;
-logic [AXI_DW-1     : 0] rq_data          ;
-logic [1 : 0] rq_resp          ;
-logic                    rq_last          ;
-logic                    rff_wafull2      ;
+//------ r fifo signals -----------------
+logic                  rff_wreset_n     ;
+logic                  rff_rreset_n     ;
+logic                  rff_wclk         ;
+logic                  rff_rclk         ;
+logic                  rff_we           ;
+logic                  rff_re           ;
+logic                  rff_wfull        ;
+logic                  rff_wafull       ;
+logic                  rff_rempty       ;
+logic [RFF_AW     : 0] rff_wcnt         ;
+logic [RFF_AW     : 0] rff_rcnt         ;
+logic [RFF_DW-1   : 0] rff_d            ;
+logic [RFF_DW-1   : 0] rff_q            ;
+logic [AXI_IW-1   : 0] rq_id            ;
+logic [AXI_DW-1   : 0] rq_data          ;
+logic [1          : 0] rq_resp          ;
+logic                  rq_last          ;
+logic                  rff_wafull2      ;
 
-//------ burst addresses ------------------
+//------ burst addresses ----------------
 logic [AXI_WSTRBW : 0] burst_addr_inc   ;
-logic [AXI_AW-0     : 0] burst_addr_nxt   ;
-logic [AXI_AW-0     : 0] burst_addr_nxt_b ; // bounded to 4KB 
-logic [AXI_AW-1     : 0] burst_addr       ;
-logic [AXI_LW-1     : 0] burst_cc         ;
-logic                    burst_last       ;
-logic                    burst_last_ws    ;
-logic [AXI_AW-1     : 0] start_addr       ;
-logic [AXI_AW-1     : 0] start_addr_mask  ;
-logic [AXI_AW-1     : 0] aligned_addr     ;
+logic [AXI_AW-0   : 0] burst_addr_nxt   ;
+logic [AXI_AW-0   : 0] burst_addr_nxt_b ; // bounded to 4KB 
+logic [AXI_AW-1   : 0] burst_addr       ;
+logic [AXI_LW-1   : 0] burst_cc         ;
+logic                  burst_last       ;
+logic                  burst_last_ws    ;
+logic [AXI_AW-1   : 0] start_addr       ;
+logic [AXI_AW-1   : 0] start_addr_mask  ;
+logic [AXI_AW-1   : 0] aligned_addr     ;
 
-//------ wait state signals ---------------
-logic [1 : 0] usr_rresp_ws     ;
-logic [AXI_IW-1     : 0] usr_rid_ws       ;
+//------ wait state signals -------------
+logic [1          : 0] usr_rresp_ws     ;
+logic [AXI_IW-1   : 0] usr_rid_ws       ;
 
-//------ other signals --------------------
-logic                    error_size       ;
-wire                     error_w4KB       ;
-logic [1 : 0] usr_rresp        ; // along with <usr_re>
+//------ other signals ------------------
+logic                  error_size       ;
+wire                   error_w4KB       ;
+logic [1          : 0] usr_rresp        ; // along with <usr_re>
 
 // output
 assign ARREADY        = ~aff_wfull       ;

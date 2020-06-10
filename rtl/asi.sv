@@ -32,17 +32,14 @@ module asi
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
     //--------- ASI CONFIGURE --------
-    ASI_AD     = 8                  , // ASI AW/AR CHANNEL BUFFER DEPTH
-    ASI_RD     = 16                  , // ASI R CHANNEL BUFFER DEPTH
-    ASI_WD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
-    ASI_BD     = 8                  , // ASI B CHANNEL BUFFER DEPTH
+    ASI_AD     = 8                   , // ASI AW/AR CHANNEL BUFFER DEPTH
+    ASI_XD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
+    ASI_BD     = 8                   , // ASI B CHANNEL BUFFER DEPTH
     ASI_ARB    = 0                   , // 0-GRANT WRITE WITH HIGHER PRIORITY; otherwise-GRANT READ WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE
     //-------- DERIVED PARAMETERS ----
-    AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
-    AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
     //---- AXI GLOBAL ---------------------------
     input  logic                    ACLK        ,
@@ -52,7 +49,7 @@ module asi
     input  logic [AXI_AW-1     : 0] AWADDR      ,
     input  logic [AXI_LW-1     : 0] AWLEN       ,
     input  logic [AXI_SW-1     : 0] AWSIZE      ,
-    input  logic [1 : 0] AWBURST     ,
+    input  logic [1            : 0] AWBURST     ,
     input  logic                    AWVALID     ,
     output logic                    AWREADY     ,
     input  logic                    AWLOCK      , // NO LOADS 
@@ -68,7 +65,7 @@ module asi
     output logic                    WREADY      ,
     //---- AXI WRITE RESPONSE -------------------
     output logic [AXI_IW-1     : 0] BID         ,
-    output logic [1 : 0] BRESP       ,
+    output logic [1            : 0] BRESP       ,
     output logic                    BVALID      ,
     input  logic                    BREADY      ,
     //---- AXI ADDRESS READ ---------------------
@@ -76,7 +73,7 @@ module asi
     input  logic [AXI_AW-1     : 0] ARADDR      ,
     input  logic [AXI_LW-1     : 0] ARLEN       ,
     input  logic [AXI_SW-1     : 0] ARSIZE      ,
-    input  logic [1 : 0] ARBURST     ,
+    input  logic [1            : 0] ARBURST     ,
     input  logic                    ARVALID     ,
     output logic                    ARREADY     ,
     input  logic                    ARLOCK      , // NO LOADS 
@@ -87,7 +84,7 @@ module asi
     //---- AXI READ DATA ------------------------
     output logic [AXI_IW-1     : 0] RID         ,
     output logic [AXI_DW-1     : 0] RDATA       ,
-    output logic [1 : 0] RRESP       ,
+    output logic [1            : 0] RRESP       ,
     output logic                    RLAST       ,
     output logic                    RVALID      ,
     input  logic                    RREADY      ,
@@ -110,7 +107,7 @@ enum logic [1:0] { ARB_IDLE=2'b00, ARB_READ, ARB_WRITE } st_cur, st_nxt; // arbi
 logic [AXI_IW-1     : 0] usr_wid         ; // output 
 logic [AXI_LW-1     : 0] usr_wlen        ; // output 
 logic [AXI_SW-1     : 0] usr_wsize       ; // output 
-logic [1 : 0] usr_wburst      ; // output 
+logic [1            : 0] usr_wburst      ; // output 
 //W CHANNEL
 logic [AXI_AW-1     : 0] usr_waddr       ; // output 
 logic [AXI_DW-1     : 0] usr_wdata       ; // output 
@@ -126,7 +123,7 @@ logic                    usr_wsize_error ; // input. unsupported transfer size
 logic [AXI_IW-1     : 0] usr_rid         ; // output  
 logic [AXI_LW-1     : 0] usr_rlen        ; // output 
 logic [AXI_SW-1     : 0] usr_rsize       ; // output 
-logic [1 : 0] usr_rburst      ; // output 
+logic [1            : 0] usr_rburst      ; // output 
 //R CHANNEL
 logic [AXI_AW-1     : 0] usr_raddr       ; // output  
 logic                    usr_re          ; // output 
@@ -183,16 +180,13 @@ asi_w #(
 .AXI_SW     ( AXI_SW     ),
 //--------- ASI CONFIGURE --------
 .ASI_AD     ( ASI_AD     ),
-.ASI_RD     ( ASI_RD     ),
-.ASI_WD     ( ASI_WD     ),
+.ASI_XD     ( ASI_XD     ),
 .ASI_BD     ( ASI_BD     ),
 .ASI_ARB    ( ASI_ARB    ),
 //--------- SLAVE ATTRIBUTES -----
 .SLV_WS     ( SLV_WS     ),
 //-------- DERIVED PARAMETERS ----
-.AXI_BYTES  ( AXI_BYTES  ),
-.AXI_WSTRBW ( AXI_WSTRBW ),
-.AXI_BYTESW ( AXI_BYTESW )
+.AXI_WSTRBW ( AXI_WSTRBW )
 ) w_inf ( 
     .*
 );
@@ -206,16 +200,13 @@ asi_r #(
 .AXI_SW     ( AXI_SW     ),
 //--------- ASI CONFIGURE --------
 .ASI_AD     ( ASI_AD     ),
-.ASI_RD     ( ASI_RD     ),
-.ASI_WD     ( ASI_WD     ),
+.ASI_XD     ( ASI_XD     ),
 .ASI_BD     ( ASI_BD     ),
 .ASI_ARB    ( ASI_ARB    ),
 //--------- SLAVE ATTRIBUTES -----
 .SLV_WS     ( SLV_WS     ),
 //-------- DERIVED PARAMETERS ----
-.AXI_BYTES  ( AXI_BYTES  ),
-.AXI_WSTRBW ( AXI_WSTRBW ),
-.AXI_BYTESW ( AXI_BYTESW )
+.AXI_WSTRBW ( AXI_WSTRBW )
 ) r_inf ( 
     .*
 );

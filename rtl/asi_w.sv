@@ -11,21 +11,15 @@ module asi_w
     AXI_IW     = 8                   , // AXI ID TAG  BITS WIDTH
     AXI_LW     = 8                   , // AXI AWLEN   BITS WIDTH
     AXI_SW     = 3                   , // AXI AWSIZE  BITS WIDTH
-    AXI_BURSTW = 2                   , // AXI AWBURST BITS WIDTH
-    AXI_BRESPW = 2                   , // AXI BRESP   BITS WIDTH
-    AXI_RRESPW = 2                   , // AXI RRESP   BITS WIDTH
     //--------- ASI CONFIGURE --------
-    ASI_AD     = 4                   , // ASI AW/AR CHANNEL BUFFER DEPTH
-    ASI_RD     = 64                  , // ASI R CHANNEL BUFFER DEPTH
-    ASI_WD     = 64                  , // ASI W CHANNEL BUFFER DEPTH
-    ASI_BD     = 4                   , // ASI B CHANNEL BUFFER DEPTH
-    ASI_ARB    = 0                   , // 1-GRANT READ WITH HIGHER PRIORITY; 0-GRANT WRITE WITH HIGHER PRIORITY
+    ASI_AD     = 8                   , // ASI AW/AR CHANNEL BUFFER DEPTH
+    ASI_XD     = 16                  , // ASI W CHANNEL BUFFER DEPTH
+    ASI_BD     = 8                   , // ASI B CHANNEL BUFFER DEPTH
+    ASI_ARB    = 0                   , // 0-GRANT WRITE WITH HIGHER PRIORITY; otherwise-GRANT READ WITH HIGHER PRIORITY
     //--------- SLAVE ATTRIBUTES -----
     SLV_WS     = 1                   , // SLAVE MODEL READ WAIT STATES CYCLE
     //-------- DERIVED PARAMETERS ----
-    AXI_BYTES  = AXI_DW/8            , // BYTES NUMBER IN <AXI_DW>
-    AXI_WSTRBW = AXI_BYTES           , // AXI WSTRB BITS WIDTH
-    AXI_BYTESW = $clog2(AXI_BYTES+1)   
+    AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
     //---- AXI GLOBAL SIGNALS -----------------------
     input  logic                    ACLK            ,
@@ -35,7 +29,7 @@ module asi_w
     input  logic [AXI_AW-1     : 0] AWADDR          ,
     input  logic [AXI_LW-1     : 0] AWLEN           ,
     input  logic [AXI_SW-1     : 0] AWSIZE          ,
-    input  logic [1 : 0] AWBURST         ,
+    input  logic [1            : 0] AWBURST         ,
     input  logic                    AWVALID         ,
     output logic                    AWREADY         ,
     //---- AXI DATA WRITE SIGNALS -------------------
@@ -46,7 +40,7 @@ module asi_w
     output logic                    WREADY          ,
     //---- AXI WRITE RESPONSE SIGNALS ---------------
     output logic [AXI_IW-1     : 0] BID             ,
-    output logic [AXI_BRESPW-1 : 0] BRESP           ,
+    output logic [1            : 0] BRESP           ,
     output logic                    BVALID          ,
     input  logic                    BREADY          ,
     //---- USER LOGIC SIGNALS -----------------------
@@ -56,7 +50,7 @@ module asi_w
     output logic [AXI_IW-1     : 0] usr_wid         ,
     output logic [AXI_LW-1     : 0] usr_wlen        ,
     output logic [AXI_SW-1     : 0] usr_wsize       ,
-    output logic [1 : 0] usr_wburst      ,
+    output logic [1            : 0] usr_wburst      ,
     //W CHANNEL
     output logic [AXI_AW-1     : 0] usr_waddr       ,
     output logic [AXI_DW-1     : 0] usr_wdata       ,
@@ -74,10 +68,10 @@ timeunit 1ns;
 timeprecision 1ps;
 
 localparam AFF_DW = AXI_IW + AXI_AW + AXI_LW + AXI_SW + 1, // +1~AXBURSTW
-           WFF_DW = AXI_DW + AXI_WSTRBW + 1,
-           BFF_DW = AXI_IW + AXI_BRESPW,
+           WFF_DW = AXI_DW + AXI_WSTRBW + 1, // +1~WLAST
+           BFF_DW = AXI_IW + 1, // +1~BRESPW
            AFF_AW = $clog2(ASI_AD),
-           WFF_AW = $clog2(ASI_WD),
+           WFF_AW = $clog2(ASI_XD),
            BFF_AW = $clog2(ASI_BD);
 
 localparam [1 : 0] BT_FIXED     = 0;
@@ -115,12 +109,12 @@ logic [AXI_IW-1     : 0] aq_id            ;
 logic [AXI_AW-1     : 0] aq_addr          ;
 logic [AXI_LW-1     : 0] aq_len           ;
 logic [AXI_SW-1     : 0] aq_size          ;
-logic [AXI_BURSTW-1 : 0] aq_burst         ;
+logic [1            : 0] aq_burst         ;
 logic [AXI_IW-1     : 0] aq_id_latch      ;
 logic [AXI_AW-1     : 0] aq_addr_latch    ;
 logic [AXI_LW-1     : 0] aq_len_latch     ;
 logic [AXI_SW-1     : 0] aq_size_latch    ;
-logic [AXI_BURSTW-1 : 0] aq_burst_latch   ;
+logic [1            : 0] aq_burst_latch   ;
 
 //------ w fifo signals -------------------
 logic                    wff_wreset_n     ;
@@ -153,10 +147,10 @@ logic [BFF_AW       : 0] bff_rcnt         ;
 logic [BFF_DW-1     : 0] bff_d            ;
 logic [BFF_DW-1     : 0] bff_q            ;
 logic [AXI_IW-1     : 0] bq_bid           ;
-logic [AXI_BRESPW-1 : 0] bq_bresp         ;
+logic [1            : 0] bq_bresp         ;
 
 //------ burst addresses ------------------
-logic [AXI_BYTESW-1 : 0] burst_addr_inc   ;
+logic [AXI_WSTRBW   : 0] burst_addr_inc   ;
 logic [AXI_AW-0     : 0] burst_addr_nxt   ;
 logic [AXI_AW-0     : 0] burst_addr_nxt_b ; // bounded to 4KB 
 logic [AXI_AW-1     : 0] burst_addr       ;
@@ -169,7 +163,7 @@ logic [AXI_AW-1     : 0] aligned_addr     ;
 //------ other signals --------------------
 logic                    error_size       ;
 logic                    error_w4KB       ;
-logic [AXI_BRESPW-1 : 0] usr_bresp        ;
+logic [1            : 0] usr_bresp        ;
 
 // output
 assign AWREADY        = ~aff_wfull         ;
@@ -226,15 +220,15 @@ assign bff_d          = {usr_wid, usr_bresp};
 assign { bq_bid, bq_bresp } = bff_q        ;
 
 // burst
-assign burst_addr_inc = usr_wburst==BT_FIXED ? '0 : {{(AXI_BYTESW-1){1'b0}},1'b1}<<usr_wsize;
+assign burst_addr_inc = usr_wburst==BT_FIXED ? '0 : {{AXI_WSTRBW{1'b0}},1'b1}<<usr_wsize;
 assign burst_addr_nxt = st_cur==BP_FIRST ? burst_addr_inc+{1'b0,aligned_addr} : st_cur==BP_BURST ? burst_addr_inc+{1'b0,burst_addr} : 'x; 
 assign start_addr     = st_cur==BP_FIRST ? aq_addr : aq_addr_latch;
 assign aligned_addr   = start_addr_mask & start_addr;
 assign burst_last     = (wff_re && aq_len=='0 && st_cur==BP_FIRST) || (wff_re && burst_cc==aq_len_latch && st_cur==BP_BURST);
 
 always_comb begin
-    start_addr_mask = ('1)<<($clog2(AXI_BYTES));
-	for(int i=0;i<=($clog2(AXI_BYTES));i++) begin
+    start_addr_mask = ('1)<<($clog2(AXI_DW/8));
+	for(int i=0;i<=($clog2(AXI_DW/8));i++) begin
 		if(i==usr_wsize) begin
             start_addr_mask = ('1)<<i;
 		end
@@ -242,7 +236,7 @@ always_comb begin
 end
 
 // others
-assign error_size = (usr_wsize > $clog2(AXI_BYTES)) | usr_wsize_error;
+assign error_size = (usr_wsize > $clog2(AXI_DW/8)) | usr_wsize_error;
 assign usr_bresp  = { error_size | error_w4KB, 1'b0 };
 
 generate 
@@ -279,7 +273,7 @@ always_ff @(posedge clk or negedge rst_n) begin
         burst_addr <= '0;
     end
     else if(st_cur==BP_FIRST) begin
-        burst_cc   <= st_nxt==BP_BURST ? {{(AXI_BURSTW-1){1'b0}},1'b1} : 'x;
+        burst_cc   <= st_nxt==BP_BURST ? {{(AXI_LW-1){1'b0}},1'b1} : 'x;
         burst_addr <= st_nxt==BP_BURST ? burst_addr_nxt_b[0 +: AXI_AW] : 'x;
     end
     else if(st_cur==BP_BURST) begin
