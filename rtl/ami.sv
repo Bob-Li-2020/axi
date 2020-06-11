@@ -27,6 +27,7 @@ module ami //ami: Axi Master Interface
     AMI_AD     = 8                   , // AMI AW/AR CHANNEL FIFO DEPTH
     AMI_XD     = 16                  , // AMI W/R   CHANNEL FIFO DEPTH
     AMI_BD     = 8                   , // AMI B     CHANNEL FIFO DEPTH
+    RAM_WS     = 9                   , // RAM read wait states
     //-------- DERIVED PARAMETERS ----
     AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
@@ -94,6 +95,7 @@ module ami //ami: Axi Master Interface
     input  logic                    usr_wlast   ,
     input  logic                    usr_wvalid  ,
     output logic                    usr_wready  ,
+    output logic                    usr_wnafull , // !almost_full
     //---- USER B  ------------------------------
     output logic [AXI_IW-1     : 0] usr_bid     ,
     output logic [1            : 0] usr_bresp   ,
@@ -134,6 +136,7 @@ ami_w #(
     .AMI_AD     ( AMI_AD     ),
     .AMI_XD     ( AMI_XD     ),
     .AMI_BD     ( AMI_BD     ),
+    .RAM_WS     ( RAM_WS     ),
     //-------- DERIVED PARAMETERS ----
     .AXI_WSTRBW ( AXI_WSTRBW )
 ) w_inf (
@@ -152,6 +155,7 @@ ami_r #(
     .AMI_AD     ( AMI_AD     ),
     .AMI_XD     ( AMI_XD     ),
     .AMI_BD     ( AMI_BD     ),
+    .RAM_WS     ( RAM_WS     ),
     //-------- DERIVED PARAMETERS ----
     .AXI_WSTRBW ( AXI_WSTRBW )
 ) r_inf (

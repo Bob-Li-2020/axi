@@ -18,6 +18,7 @@ module ami_w // ami_w: Axi Master Interface Write
     AMI_AD     = 8                   , // AMI AW/AR CHANNEL FIFO DEPTH
     AMI_XD     = 16                  , // AMI W/R   CHANNEL FIFO DEPTH
     AMI_BD     = 8                   , // AMI B     CHANNEL FIFO DEPTH
+    RAM_WS     = 9                   , // RAM read wait states
     //-------- DERIVED PARAMETERS ----
     AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
@@ -60,6 +61,7 @@ module ami_w // ami_w: Axi Master Interface Write
     input  logic                    usr_wlast   ,
     input  logic                    usr_wvalid  ,
     output logic                    usr_wready  ,
+    output logic                    usr_wnafull , // !almost_full
     //---- USER B  ------------------------------
     output logic [AXI_IW-1     : 0] usr_bid     ,
     output logic [1            : 0] usr_bresp   ,
@@ -91,7 +93,6 @@ logic                    aff_rclk     ;
 logic                    aff_we       ;
 logic                    aff_re       ;
 logic                    aff_wfull    ;
-logic                    aff_wafull   ;
 logic                    aff_rempty   ;
 logic [AFF_AW       : 0] aff_wcnt     ;
 logic [AFF_AW       : 0] aff_rcnt     ;
@@ -129,7 +130,6 @@ logic                    bff_rclk     ;
 logic                    bff_we       ;
 logic                    bff_re       ;
 logic                    bff_wfull    ;
-logic                    bff_wafull   ;
 logic                    bff_rempty   ;
 logic [BFF_AW       : 0] bff_wcnt     ;
 logic [BFF_AW       : 0] bff_rcnt     ;
@@ -146,7 +146,6 @@ logic                    lff_rclk     ;
 logic                    lff_we       ;
 logic                    lff_re       ;
 logic                    lff_wfull    ;
-logic                    lff_wafull   ;
 logic                    lff_rempty   ;
 logic [LFF_AW       : 0] lff_wcnt     ;
 logic [LFF_AW       : 0] lff_rcnt     ;
@@ -171,6 +170,7 @@ assign WVALID             = !wff_rempty && ost_cc2>0 && bursting;
 assign BREADY             = !bff_wfull       ;
 assign usr_awready        = !aff_wfull & !lff_wfull;
 assign usr_wready         = !wff_wfull       ;
+assign usr_wnafull        = !wff_wafull      ;
 assign usr_bid            = bq_bid           ;
 assign usr_bresp          = bq_bresp         ;
 assign usr_bvalid         = !bff_rempty      ;
@@ -192,6 +192,7 @@ assign wff_wclk           = usr_clk          ;
 assign wff_rclk           = ACLK             ;
 assign wff_we             = usr_wvalid & usr_wready;
 assign wff_re             = WVALID & WREADY  ;
+assign wff_wafull         = (wff_wcnt >= AMI_XD-RAM_WS-2) | wff_wfull;
 assign wff_d              = {usr_wdata, usr_wstrb, usr_wlast};
 assign {wq_data, wq_strb, wq_last} = wff_q   ;
 
@@ -249,7 +250,6 @@ afifo #(
     .we       ( aff_we       ),
     .re       ( aff_re       ),
     .wfull    ( aff_wfull    ),
-    .wafull   ( aff_wafull   ), 
     .rempty   ( aff_rempty   ),
     .wcnt     ( aff_wcnt     ),
     .rcnt     ( aff_rcnt     ),
@@ -268,7 +268,6 @@ afifo #(
     .we       ( wff_we       ),
     .re       ( wff_re       ),
     .wfull    ( wff_wfull    ),
-    .wafull   ( wff_wafull   ), 
     .rempty   ( wff_rempty   ),
     .wcnt     ( wff_wcnt     ),
     .rcnt     ( wff_rcnt     ),
@@ -287,7 +286,6 @@ afifo #(
     .we       ( bff_we       ),
     .re       ( bff_re       ),
     .wfull    ( bff_wfull    ),
-    .wafull   ( bff_wafull   ), 
     .rempty   ( bff_rempty   ),
     .wcnt     ( bff_wcnt     ),
     .rcnt     ( bff_rcnt     ),
@@ -306,7 +304,6 @@ afifo #(
     .we       ( lff_we       ),
     .re       ( lff_re       ),
     .wfull    ( lff_wfull    ),
-    .wafull   ( lff_wafull   ), 
     .rempty   ( lff_rempty   ),
     .wcnt     ( lff_wcnt     ),
     .rcnt     ( lff_rcnt     ),

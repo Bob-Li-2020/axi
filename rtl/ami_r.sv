@@ -18,6 +18,7 @@ module ami_r // ami_r: Axi Master Interface Read
     AMI_AD     = 8                   , // AMI AW/AR CHANNEL FIFO DEPTH
     AMI_XD     = 16                  , // AMI W/R   CHANNEL FIFO DEPTH
     AMI_BD     = 8                   , // AMI B     CHANNEL FIFO DEPTH
+    RAM_WS     = 9                   , // RAM read wait states
     //-------- DERIVED PARAMETERS ----
     AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
@@ -78,7 +79,6 @@ logic                aff_rclk     ;
 logic                aff_we       ;
 logic                aff_re       ;
 logic                aff_wfull    ;
-logic                aff_wafull   ;
 logic                aff_rempty   ;
 logic [AFF_AW   : 0] aff_wcnt     ;
 logic [AFF_AW   : 0] aff_rcnt     ;
@@ -98,7 +98,6 @@ logic                rff_rclk     ;
 logic                rff_we       ;
 logic                rff_re       ;
 logic                rff_wfull    ;
-logic                rff_wafull   ;
 logic                rff_rempty   ;
 logic [RFF_AW   : 0] rff_wcnt     ;
 logic [RFF_AW   : 0] rff_rcnt     ;
@@ -156,7 +155,6 @@ afifo #(
     .we       ( aff_we       ),
     .re       ( aff_re       ),
     .wfull    ( aff_wfull    ),
-    .wafull   ( aff_wafull   ), 
     .rempty   ( aff_rempty   ),
     .wcnt     ( aff_wcnt     ),
     .rcnt     ( aff_rcnt     ),
@@ -175,7 +173,6 @@ afifo #(
     .we       ( rff_we       ),
     .re       ( rff_re       ),
     .wfull    ( rff_wfull    ),
-    .wafull   ( rff_wafull   ), 
     .rempty   ( rff_rempty   ),
     .wcnt     ( rff_wcnt     ),
     .rcnt     ( rff_rcnt     ),
