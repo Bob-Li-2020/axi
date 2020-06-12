@@ -18,55 +18,55 @@ module ami_w // ami_w: Axi Master Interface Write
     AMI_AD     = 8                   , // AMI AW/AR CHANNEL FIFO DEPTH
     AMI_XD     = 16                  , // AMI W/R   CHANNEL FIFO DEPTH
     AMI_BD     = 8                   , // AMI B     CHANNEL FIFO DEPTH
-    RAM_WS     = 9                   , // RAM read wait states
     //-------- DERIVED PARAMETERS ----
     AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
-    //---- AXI GLOBAL ---------------------------
-    input  logic                    ACLK        ,
-    input  logic                    ARESETn     ,
-    //---- AXI AW -------------------------------
-    output logic [AXI_IW-1     : 0] AWID        ,
-    output logic [AXI_AW-1     : 0] AWADDR      ,
-    output logic [AXI_LW-1     : 0] AWLEN       ,
-    output logic [AXI_SW-1     : 0] AWSIZE      ,
-    output logic [1            : 0] AWBURST     ,
-    output logic                    AWVALID     ,
-    input  logic                    AWREADY     ,
-    //---- AXI W --------------------------------
-    output logic [AXI_DW-1     : 0] WDATA       ,
-    output logic [AXI_WSTRBW-1 : 0] WSTRB       ,
-    output logic                    WLAST       ,
-    output logic                    WVALID      ,
-    input  logic                    WREADY      ,
-    //---- AXI B --------------------------------
-    input  logic [AXI_IW-1     : 0] BID         ,
-    input  logic [1            : 0] BRESP       ,
-    input  logic                    BVALID      ,
-    output logic                    BREADY      ,
-    //---- USER GLOBAL --------------------------
-    input  logic                    usr_clk     ,
-    input  logic                    usr_reset_n ,
-    //---- USER AW ------------------------------
-    input  logic [AXI_IW-1     : 0] usr_awid    ,
-    input  logic [AXI_AW-1     : 0] usr_awaddr  ,
-    input  logic [AXI_LW-1     : 0] usr_awlen   ,
-    input  logic [AXI_SW-1     : 0] usr_awsize  ,
-    input  logic [1            : 0] usr_awburst ,
-    input  logic                    usr_awvalid ,
-    output logic                    usr_awready ,
-    //---- USER W  ------------------------------
-    input  logic [AXI_DW-1     : 0] usr_wdata   ,
-    input  logic [AXI_WSTRBW-1 : 0] usr_wstrb   ,
-    input  logic                    usr_wlast   ,
-    input  logic                    usr_wvalid  ,
-    output logic                    usr_wready  ,
-    output logic                    usr_wnafull , // !almost_full
-    //---- USER B  ------------------------------
-    output logic [AXI_IW-1     : 0] usr_bid     ,
-    output logic [1            : 0] usr_bresp   ,
-    output logic                    usr_bvalid  ,
-    input  logic                    usr_bready   
+    //---- AXI GLOBAL -------------------------------
+    input  logic                        ACLK        ,
+    input  logic                        ARESETn     ,
+    //---- AXI AW -----------------------------------
+    output logic [AXI_IW-1         : 0] AWID        ,
+    output logic [AXI_AW-1         : 0] AWADDR      ,
+    output logic [AXI_LW-1         : 0] AWLEN       ,
+    output logic [AXI_SW-1         : 0] AWSIZE      ,
+    output logic [1                : 0] AWBURST     ,
+    output logic                        AWVALID     ,
+    input  logic                        AWREADY     ,
+    //---- AXI W ------------------------------------
+    output logic [AXI_DW-1         : 0] WDATA       ,
+    output logic [AXI_WSTRBW-1     : 0] WSTRB       ,
+    output logic                        WLAST       ,
+    output logic                        WVALID      ,
+    input  logic                        WREADY      ,
+    //---- AXI B ------------------------------------
+    input  logic [AXI_IW-1         : 0] BID         ,
+    input  logic [1                : 0] BRESP       ,
+    input  logic                        BVALID      ,
+    output logic                        BREADY      ,
+    //---- USER GLOBAL ------------------------------
+    input  logic                        usr_clk     ,
+    input  logic                        usr_reset_n ,
+    //---- USER AW ----------------------------------
+    input  logic [AXI_IW-1         : 0] usr_awid    ,
+    input  logic [AXI_AW-1         : 0] usr_awaddr  ,
+    input  logic [AXI_LW-1         : 0] usr_awlen   ,
+    input  logic [AXI_SW-1         : 0] usr_awsize  ,
+    input  logic [1                : 0] usr_awburst ,
+    input  logic                        usr_awvalid ,
+    output logic                        usr_awready ,
+    //---- USER W  ----------------------------------
+    input  logic [AXI_DW-1         : 0] usr_wdata   ,
+    input  logic [AXI_WSTRBW-1     : 0] usr_wstrb   ,
+    input  logic                        usr_wlast   ,
+    input  logic                        usr_wvalid  ,
+    output logic                        usr_wready  ,
+    output logic                        usr_wnafull , // !almost_full
+    input  logic [$clog2(AMI_XD)-1 : 0] usr_ram_ws  , // RAM read wait states
+    //---- USER B  ----------------------------------
+    output logic [AXI_IW-1         : 0] usr_bid     ,
+    output logic [1                : 0] usr_bresp   ,
+    output logic                        usr_bvalid  ,
+    input  logic                        usr_bready   
 );
 
 timeunit 1ns;
@@ -192,7 +192,7 @@ assign wff_wclk           = usr_clk          ;
 assign wff_rclk           = ACLK             ;
 assign wff_we             = usr_wvalid & usr_wready;
 assign wff_re             = WVALID & WREADY  ;
-assign wff_wafull         = (wff_wcnt+RAM_WS+2 >= AMI_XD) | wff_wfull;
+assign wff_wafull         = (wff_wcnt+usr_ram_ws+2 >= AMI_XD) | wff_wfull;
 assign wff_d              = {usr_wdata, usr_wstrb, usr_wlast};
 assign {wq_data, wq_strb, wq_last} = wff_q   ;
 

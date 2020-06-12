@@ -24,10 +24,10 @@ wire          EmptyN ;
 wire          FullN  ;
 wire [AW : 0] WNum   ;
 wire [AW : 0] RNum   ;
-assign wfull  = ~FullN     ;
-assign rempty = ~EmptyN    ;
-assign wcnt   = WNum       ;
-assign rcnt   = RNum       ;
+assign wfull  = ~FullN ;
+assign rempty = ~EmptyN;
+assign wcnt   = WNum   ;
+assign rcnt   = RNum   ;
 util_fifoa #(
     .AW ( AW ),
     .DW ( DW )

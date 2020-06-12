@@ -18,7 +18,6 @@ module ami_r // ami_r: Axi Master Interface Read
     AMI_AD     = 8                   , // AMI AW/AR CHANNEL FIFO DEPTH
     AMI_XD     = 16                  , // AMI W/R   CHANNEL FIFO DEPTH
     AMI_BD     = 8                   , // AMI B     CHANNEL FIFO DEPTH
-    RAM_WS     = 9                   , // RAM read wait states
     //-------- DERIVED PARAMETERS ----
     AXI_WSTRBW = AXI_DW/8              // AXI WSTRB BITS WIDTH
 )(
