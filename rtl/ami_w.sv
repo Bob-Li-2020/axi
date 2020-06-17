@@ -192,7 +192,7 @@ assign wff_wclk           = usr_clk          ;
 assign wff_rclk           = ACLK             ;
 assign wff_we             = usr_wvalid & usr_wready;
 assign wff_re             = WVALID & WREADY  ;
-assign wff_wafull         = (wff_wcnt+usr_ram_ws+2 >= AMI_XD) | wff_wfull;
+assign wff_wafull         = (wff_wcnt+usr_ram_ws+1 >= AMI_XD);
 assign wff_d              = {usr_wdata, usr_wstrb, usr_wlast};
 assign {wq_data, wq_strb, wq_last} = wff_q   ;
 
