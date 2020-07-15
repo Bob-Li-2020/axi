@@ -121,8 +121,8 @@ module ami //ami: Axi Master Interface
 timeunit 1ns;
 timeprecision 1ps;
 
-assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000}; 
-assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000};
+assign {AWLOCK, AWCACHE, AWPROT, AWQOS, AWREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000, 4'b0000}; 
+assign {ARLOCK, ARCACHE, ARPROT, ARQOS, ARREGION} = {1'b0, 4'b0001, 3'b000, 4'b0000, 4'b0000};
 
 ami_w #(
     //--------- AXI PARAMETERS -------
